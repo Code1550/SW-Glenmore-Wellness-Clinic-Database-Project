@@ -4,6 +4,9 @@
   "description": "The SW Glenmore Wellness Clinic Database manages patients, staff, appointments, billing, and clinical records. It streamlines scheduling, payments, and reporting, replacing manual systems to improve efficiency, accuracy, and quality of healthcare services.",
   "main": "index.js",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -16,6 +19,7 @@
   },
   "devDependencies": {
     "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0"
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.4"
   }
 }
