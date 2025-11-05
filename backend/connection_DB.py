@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 uri = os.getenv('MONGODB_URI')
+db_name = os.getenv('DB_NAME')
 client = MongoClient(uri, server_api=ServerApi('1'))
 # Send a ping to confirm a successful connection
 try:
@@ -14,3 +15,6 @@ try:
 except Exception as e:
     print(e)
 # api endpoints#
+
+db = client[db_name]
+print(f"Connected to database: {db_name}")
