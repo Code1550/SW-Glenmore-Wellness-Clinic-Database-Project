@@ -15,5 +15,3 @@ try:
 except Exception as e:
     print(e)
 # api endpoints#
-
-db = client[db_name]
