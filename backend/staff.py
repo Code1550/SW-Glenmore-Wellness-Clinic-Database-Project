@@ -31,7 +31,7 @@ def add_new_staff(first_name: str, last_name: str, email: str, role_id: int, act
     # Insert into StaffRole collection
     db.StaffRole.insert_one(staff_role_doc)
 
-    print(f" Added new staff: {first_name} {last_name} (Staff_Id: {staff_id}) assigned to Role_Id: {role_id}")
+    print(f"Added new staff: {first_name} {last_name} (Staff_Id: {staff_id}) assigned to Role_Id: {role_id}")
     return staff_id
 
 # Update staff function
@@ -43,7 +43,7 @@ def update_staff(staff_id: int, first_name=None, last_name=None, email=None, rol
     # Check if staff exists
     staff = db.Staff.find_one({"Staff_Id": staff_id})
     if not staff:
-        print(f"❌ No staff member found with Staff_Id: {staff_id}")
+        print(f"No staff member found with Staff_Id: {staff_id}")
         return False
 
     # Build update object for Staff collection
@@ -63,7 +63,7 @@ def update_staff(staff_id: int, first_name=None, last_name=None, email=None, rol
             {"Staff_Id": staff_id},
             {"$set": update_fields}
         )
-        print(f"✅ Updated Staff_Id {staff_id} details: {update_fields}")
+        print(f"Updated Staff_Id {staff_id} details: {update_fields}")
 
     # Update the role in StaffRole if provided
     if role_id is not None:
@@ -72,7 +72,7 @@ def update_staff(staff_id: int, first_name=None, last_name=None, email=None, rol
             {"$set": {"Role_Id": role_id}},
             upsert=True  # ensure record exists
         )
-        print(f"✅ Updated Role_Id for Staff_Id {staff_id} to {role_id}")
+        print(f"Updated Role_Id for Staff_Id {staff_id} to {role_id}")
 
     print("Staff update complete.")
     return True
