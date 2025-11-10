@@ -15,3 +15,30 @@ for id_name in ids:
     )
 
 print("✅ Counters initialized.") '''
+
+# Populate Roles collection with predefined roles
+'''
+def populate_roles():
+    roles_data = [
+        "Physician",
+        "Practitioner",
+        "Nurse",
+        "Midwife",
+        "Pharmacist",
+        "Medical Technician",
+        "Office Administrator",
+        "Receptionist",
+        "Bookkeeper"
+    ]
+
+    for role_name in roles_data:
+        role_id = get_next_sequence("Role_id")
+
+        db.Role.insert_one({
+            "Role_Id": role_id,
+            "Role_Name": role_name
+        })
+
+        print(f"✅ Inserted Role: {role_name} with Role_Id: {role_id}")
+
+    print("\nAll roles successfully inserted into Roles collection!") '''
