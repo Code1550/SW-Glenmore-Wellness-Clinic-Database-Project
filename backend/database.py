@@ -1,4 +1,4 @@
-from .connection_DB import db
+from connection_DB import db
 from pymongo.collection import ReturnDocument
 
 #Database function to get the next sequence number for a given ID name
