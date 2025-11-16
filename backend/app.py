@@ -1,16 +1,15 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from datetime import datetime, date
-import traceback
+from datetime import date
 
-from database import Database
-from models import *
-from crud_patient import PatientCRUD
-from crud_staff import StaffCRUD
-from crud_appointment import AppointmentCRUD
-from crud_visit import VisitCRUD, VisitDiagnosisCRUD, VisitProcedureCRUD
-from crud_invoice import InvoiceCRUD, InvoiceLineCRUD, PaymentCRUD
-from crud_other import (
+from clinic_api.database import Database
+from clinic_api.models import *
+from clinic_api.services.patient import PatientCRUD
+from clinic_api.services.staff import StaffCRUD
+from clinic_api.services.appointment import AppointmentCRUD
+from clinic_api.services.visit import VisitCRUD, VisitDiagnosisCRUD, VisitProcedureCRUD
+from clinic_api.services.invoice import InvoiceCRUD, InvoiceLineCRUD, PaymentCRUD
+from clinic_api.services.other import (
     DiagnosisCRUD, ProcedureCRUD, DrugCRUD, PrescriptionCRUD,
     LabTestOrderCRUD, DeliveryCRUD, RecoveryStayCRUD, RecoveryObservationCRUD
 )
@@ -23,13 +22,6 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Connect to database when app starts
 with app.app_context():
     Database.connect_db()
-
-
-@app.teardown_appcontext
-def close_db_connection(exception=None):
-    """Close database connection when app context ends"""
-    Database.close_db()
-
 
 def handle_error(e):
     """Generic error handler"""
