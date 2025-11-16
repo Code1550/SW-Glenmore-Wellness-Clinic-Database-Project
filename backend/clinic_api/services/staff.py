@@ -1,6 +1,6 @@
 from typing import List, Optional
-from database import Database
-from models import Staff, StaffCreate
+from ..database import Database
+from ..models import Staff, StaffCreate
 
 
 class StaffCRUD:

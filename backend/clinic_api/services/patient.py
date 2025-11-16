@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import date
-from database import Database
-from models import Patient, PatientCreate
+from ..database import Database
+from ..models import Patient, PatientCreate
 
 
 class PatientCRUD:
