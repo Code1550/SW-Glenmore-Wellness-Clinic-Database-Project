@@ -204,9 +204,21 @@ def recreate_views():
         logger.error(f"Error recreating views: {e}")
         return jsonify({'error': str(e)}), 500
 
+# ============================================
+# Stored Procedures ENDPOINTS
+# ============================================
 
+functions_manager = initialize_stored_procedures()
 
+@app.route('/api/functions/patient-age/<date_of_birth>')
+def calculate_patient_age(date_of_birth):
+    result = db.command('eval', f'calculatePatientAge("{date_of_birth}")')
+    return jsonify({'age': result['retval']})
 
+@app.route('/api/functions/patient-visits/<int:patient_id>')
+def get_patient_visits(patient_id):
+    result = db.command('eval', f'getPatientVisitCount({patient_id})')
+    return jsonify({'visit_count': result['retval']})
 # ==================== PATIENT ROUTES ====================
 
 @app.route('/patients', methods=['POST'])
