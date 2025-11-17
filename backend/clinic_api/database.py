@@ -2,6 +2,7 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 import os
 from dotenv import load_dotenv
+import certifi
 
 load_dotenv()
 
@@ -15,12 +16,18 @@ class Database:
         try:
             # Support both MONGODB_URL and MONGODB_URI
             mongodb_url = os.getenv("MONGODB_URL") or os.getenv("MONGODB_URI")
-            db_name = os.getenv("MONGODB_DB_NAME", "wellness_clinic")
+            db_name = os.getenv("MONGODB_DB_NAME")
             
             if not mongodb_url:
                 raise ValueError("MONGODB_URL or MONGODB_URI environment variable is not set")
             
-            cls.client = MongoClient(mongodb_url)
+            # --- 2. MODIFY YOUR MongoClient CALL ---
+            cls.client = MongoClient(
+                mongodb_url,
+                tlsCAFile=certifi.where()
+            )
+            # -----------------------------------------
+            
             cls.db = cls.client[db_name]
             
             # Test the connection

@@ -1,7 +1,7 @@
 from typing import List, Optional
-from datetime import datetime, date
-from database import Database
-from models import (
+from datetime import datetime
+from ..database import Database
+from ..models import (
     Visit, VisitCreate, 
     VisitDiagnosis, VisitDiagnosisCreate,
     VisitProcedure, VisitProcedureCreate

@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import datetime, date
-from database import Database
-from models import Appointment, AppointmentCreate
+from ..database import Database
+from ..models import Appointment, AppointmentCreate
 
 
 class AppointmentCRUD:
