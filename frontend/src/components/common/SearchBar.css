@@ -1,0 +1,171 @@
+/**
+ * SearchBar Styles
+ */
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: white;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.search-bar:hover:not(.search-bar--disabled) {
+  border-color: #999;
+}
+
+.search-bar--focused {
+  border-color: #4285f4;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+}
+
+.search-bar--disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Sizes */
+.search-bar--small {
+  padding: 6px 12px;
+}
+
+.search-bar--medium {
+  padding: 10px 16px;
+}
+
+.search-bar--large {
+  padding: 14px 20px;
+}
+
+/* Icon */
+.search-bar__icon {
+  flex-shrink: 0;
+  color: #666;
+}
+
+.search-bar--focused .search-bar__icon {
+  color: #4285f4;
+}
+
+/* Input */
+.search-bar__input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: #333;
+  min-width: 0;
+}
+
+.search-bar--small .search-bar__input {
+  font-size: 13px;
+}
+
+.search-bar--large .search-bar__input {
+  font-size: 16px;
+}
+
+.search-bar__input::placeholder {
+  color: #999;
+}
+
+.search-bar__input:disabled {
+  cursor: not-allowed;
+  color: #999;
+}
+
+/* Clear button */
+.search-bar__clear {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.search-bar__clear:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.search-bar__clear:active {
+  background-color: #e0e0e0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .search-bar--large {
+    padding: 10px 16px;
+  }
+
+  .search-bar--large .search-bar__input {
+    font-size: 14px;
+  }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .search-bar {
+    background-color: #2a2a2a;
+    border-color: #444;
+  }
+
+  .search-bar:hover:not(.search-bar--disabled) {
+    border-color: #666;
+  }
+
+  .search-bar--focused {
+    border-color: #4285f4;
+    box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
+  }
+
+  .search-bar--disabled {
+    background-color: #1a1a1a;
+  }
+
+  .search-bar__icon {
+    color: #999;
+  }
+
+  .search-bar--focused .search-bar__icon {
+    color: #4285f4;
+  }
+
+  .search-bar__input {
+    color: #fff;
+  }
+
+  .search-bar__input::placeholder {
+    color: #666;
+  }
+
+  .search-bar__input:disabled {
+    color: #666;
+  }
+
+  .search-bar__clear {
+    color: #999;
+  }
+
+  .search-bar__clear:hover {
+    background-color: #3a3a3a;
+    color: #fff;
+  }
+
+  .search-bar__clear:active {
+    background-color: #444;
+  }
+}

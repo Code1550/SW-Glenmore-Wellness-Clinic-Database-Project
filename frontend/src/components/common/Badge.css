@@ -1,0 +1,229 @@
+/**
+ * Badge Styles
+ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+/* Sizes */
+.badge--small {
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 3px;
+}
+
+.badge--medium {
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+.badge--large {
+  padding: 6px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+}
+
+/* Rounded variant */
+.badge--rounded {
+  border-radius: 999px;
+}
+
+/* Clickable */
+.badge--clickable {
+  cursor: pointer;
+  background: none;
+  outline: none;
+}
+
+.badge--clickable:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.badge--clickable:active {
+  transform: translateY(0);
+}
+
+/* Icon */
+.badge__icon {
+  display: flex;
+  align-items: center;
+  font-size: 0.9em;
+}
+
+.badge__text {
+  line-height: 1;
+}
+
+/* Variants - Solid */
+.badge--primary {
+  background-color: #4285f4;
+  color: white;
+  border-color: #4285f4;
+}
+
+.badge--secondary {
+  background-color: #666;
+  color: white;
+  border-color: #666;
+}
+
+.badge--success {
+  background-color: #34a853;
+  color: white;
+  border-color: #34a853;
+}
+
+.badge--warning {
+  background-color: #fbbc04;
+  color: #333;
+  border-color: #fbbc04;
+}
+
+.badge--danger {
+  background-color: #ea4335;
+  color: white;
+  border-color: #ea4335;
+}
+
+.badge--info {
+  background-color: #4285f4;
+  color: white;
+  border-color: #4285f4;
+}
+
+/* Variants - Outlined */
+.badge--outlined.badge--primary {
+  background-color: transparent;
+  color: #4285f4;
+  border-color: #4285f4;
+}
+
+.badge--outlined.badge--secondary {
+  background-color: transparent;
+  color: #666;
+  border-color: #666;
+}
+
+.badge--outlined.badge--success {
+  background-color: transparent;
+  color: #34a853;
+  border-color: #34a853;
+}
+
+.badge--outlined.badge--warning {
+  background-color: transparent;
+  color: #f9ab00;
+  border-color: #fbbc04;
+}
+
+.badge--outlined.badge--danger {
+  background-color: transparent;
+  color: #ea4335;
+  border-color: #ea4335;
+}
+
+.badge--outlined.badge--info {
+  background-color: transparent;
+  color: #4285f4;
+  border-color: #4285f4;
+}
+
+/* Hover states for outlined clickable badges */
+.badge--clickable.badge--outlined.badge--primary:hover {
+  background-color: rgba(66, 133, 244, 0.1);
+}
+
+.badge--clickable.badge--outlined.badge--secondary:hover {
+  background-color: rgba(102, 102, 102, 0.1);
+}
+
+.badge--clickable.badge--outlined.badge--success:hover {
+  background-color: rgba(52, 168, 83, 0.1);
+}
+
+.badge--clickable.badge--outlined.badge--warning:hover {
+  background-color: rgba(251, 188, 4, 0.1);
+}
+
+.badge--clickable.badge--outlined.badge--danger:hover {
+  background-color: rgba(234, 67, 53, 0.1);
+}
+
+.badge--clickable.badge--outlined.badge--info:hover {
+  background-color: rgba(66, 133, 244, 0.1);
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .badge--secondary {
+    background-color: #999;
+    border-color: #999;
+  }
+
+  .badge--warning {
+    color: #fff;
+  }
+
+  .badge--outlined.badge--primary {
+    color: #64a5ff;
+    border-color: #64a5ff;
+  }
+
+  .badge--outlined.badge--secondary {
+    color: #ccc;
+    border-color: #999;
+  }
+
+  .badge--outlined.badge--success {
+    color: #5cd470;
+    border-color: #5cd470;
+  }
+
+  .badge--outlined.badge--warning {
+    color: #ffd666;
+    border-color: #ffd666;
+  }
+
+  .badge--outlined.badge--danger {
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+  }
+
+  .badge--outlined.badge--info {
+    color: #64a5ff;
+    border-color: #64a5ff;
+  }
+
+  .badge--clickable.badge--outlined.badge--primary:hover {
+    background-color: rgba(100, 165, 255, 0.15);
+  }
+
+  .badge--clickable.badge--outlined.badge--secondary:hover {
+    background-color: rgba(153, 153, 153, 0.15);
+  }
+
+  .badge--clickable.badge--outlined.badge--success:hover {
+    background-color: rgba(92, 212, 112, 0.15);
+  }
+
+  .badge--clickable.badge--outlined.badge--warning:hover {
+    background-color: rgba(255, 214, 102, 0.15);
+  }
+
+  .badge--clickable.badge--outlined.badge--danger:hover {
+    background-color: rgba(255, 107, 107, 0.15);
+  }
+
+  .badge--clickable.badge--outlined.badge--info:hover {
+    background-color: rgba(100, 165, 255, 0.15);
+  }
+}
