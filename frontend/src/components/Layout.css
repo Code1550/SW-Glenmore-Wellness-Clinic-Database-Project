@@ -1,0 +1,4 @@
+.app-layout { display: flex; flex-direction: column; min-height: 100vh; }
+.app-header { background: #063c8a; color: white; padding: 12px 16px; font-weight: 600; }
+.app-body { flex: 1; padding: 24px; }
+.app-footer { background: #f3f4f6; padding: 8px 16px; color: #6b7280; }
