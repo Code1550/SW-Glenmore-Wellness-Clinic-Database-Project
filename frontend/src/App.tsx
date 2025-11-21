@@ -12,6 +12,14 @@ import Laboratory from './pages/logs/Laboratory'
 import RecoveryRoom from './pages/logs/RecoveryRoom'
 import LogsIndex from './pages/logs/LogsIndex'
 
+// Reports Pages
+import MonthlyActivity from './pages/reports/MonthlyActivity'
+
+// Schedules Pages
+import DailyMaster from './pages/schedules/DailyMaster'
+import PractitionerDaily from './pages/schedules/PractitionerDaily'
+import WeeklyCoverage from './pages/schedules/WeeklyCoverage'
+
 // Optional: shared layout or navigation wrapper
 import Layout from './components/layout/Layout'
 
@@ -33,6 +41,14 @@ export default function App() {
           <Route path="/logs/laboratory/:visitId" element={<Laboratory />} />
           <Route path="/logs/recovery" element={<RecoveryRoom />} />
           <Route path="/logs/recovery/:stayId" element={<RecoveryRoom />} />
+
+          {/* Billing Routes */}
+          <Route path="/reports/MonthlyActivity" element={<MonthlyActivity />} />
+
+          {/* Schedules Routes */}
+          <Route path="/schedules/DailyMaster" element={<DailyMaster />} />
+          <Route path="/schedules/PractitionerDaily" element={<PractitionerDaily />} />
+          <Route path="/schedules/WeeklyCoverage" element={<WeeklyCoverage />} />
         </Routes>
       </Layout>
     </Router>

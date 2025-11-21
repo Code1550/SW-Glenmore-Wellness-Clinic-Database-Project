@@ -25,6 +25,14 @@ export default function NavBar() {
         <li><Link to="/logs/delivery">Delivery Log</Link></li>
         <li><Link to="/logs/laboratory">Lab Log</Link></li>
         <li><Link to="/logs/recovery">Recovery Log</Link></li>
+
+        {/* Reports */}
+        <li><Link to="/reports/MonthlyActivity">Monthly Activity</Link></li>
+
+        {/* Schedules */}
+        <li><Link to="/schedules/DailyMaster">Daily Master</Link></li>
+        <li><Link to="/schedules/PractitionerDaily">Practitioner Daily</Link></li>
+        <li><Link to="/schedules/WeeklyCoverage">Weekly Coverage</Link></li>
       </ul>
     </nav>
   )
