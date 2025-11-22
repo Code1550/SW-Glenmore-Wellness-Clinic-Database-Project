@@ -75,7 +75,7 @@ class ViewsManager:
             pipeline = [
                 {
                     "$lookup": {
-                        "from": "visits",
+                        "from": "Visit",
                         "localField": "patient_id",
                         "foreignField": "patient_id",
                         "as": "visits"
@@ -83,7 +83,7 @@ class ViewsManager:
                 },
                 {
                     "$lookup": {
-                        "from": "appointments",
+                        "from": "Appointment",
                         "localField": "patient_id",
                         "foreignField": "patient_id",
                         "as": "appointments"
@@ -127,7 +127,7 @@ class ViewsManager:
             
             self.db.command({
                 "create": view_name,
-                "viewOn": "patients",
+                "viewOn": "Patient",
                 "pipeline": pipeline
             })
             
@@ -148,7 +148,7 @@ class ViewsManager:
             pipeline = [
                 {
                     "$lookup": {
-                        "from": "appointments",
+                        "from": "Appointment",
                         "localField": "staff_id",
                         "foreignField": "staff_id",
                         "as": "appointments"
@@ -156,7 +156,7 @@ class ViewsManager:
                 },
                 {
                     "$lookup": {
-                        "from": "visits",
+                        "from": "Visit",
                         "localField": "staff_id",
                         "foreignField": "staff_id",
                         "as": "visits"
@@ -196,7 +196,7 @@ class ViewsManager:
             
             self.db.command({
                 "create": view_name,
-                "viewOn": "staff",
+                "viewOn": "Staff",
                 "pipeline": pipeline
             })
             
@@ -222,7 +222,7 @@ class ViewsManager:
                 },
                 {
                     "$lookup": {
-                        "from": "patients",
+                        "from": "Patient",
                         "localField": "patient_id",
                         "foreignField": "patient_id",
                         "as": "patient"
@@ -230,7 +230,7 @@ class ViewsManager:
                 },
                 {
                     "$lookup": {
-                        "from": "staff",
+                        "from": "Staff",
                         "localField": "staff_id",
                         "foreignField": "staff_id",
                         "as": "staff"
@@ -263,7 +263,7 @@ class ViewsManager:
             
             self.db.command({
                 "create": view_name,
-                "viewOn": "visits",
+                "viewOn": "Visit",
                 "pipeline": pipeline
             })
             
@@ -284,7 +284,7 @@ class ViewsManager:
             pipeline = [
                 {
                     "$lookup": {
-                        "from": "patients",
+                        "from": "Patient",
                         "localField": "patient_id",
                         "foreignField": "patient_id",
                         "as": "patient"
@@ -292,7 +292,7 @@ class ViewsManager:
                 },
                 {
                     "$lookup": {
-                        "from": "payments",
+                        "from": "Payment",
                         "localField": "invoice_id",
                         "foreignField": "invoice_id",
                         "as": "payments"
@@ -300,7 +300,7 @@ class ViewsManager:
                 },
                 {
                     "$lookup": {
-                        "from": "invoice_lines",
+                        "from": "InvoiceLines",
                         "localField": "invoice_id",
                         "foreignField": "invoice_id",
                         "as": "line_items"
@@ -355,7 +355,7 @@ class ViewsManager:
             
             self.db.command({
                 "create": view_name,
-                "viewOn": "invoices",
+                "viewOn": "Invoice",
                 "pipeline": pipeline
             })
             
@@ -376,7 +376,7 @@ class ViewsManager:
             pipeline = [
                 {
                     "$lookup": {
-                        "from": "patients",
+                        "from": "Patient",
                         "localField": "patient_id",
                         "foreignField": "patient_id",
                         "as": "patient"
@@ -443,7 +443,7 @@ class ViewsManager:
             
             self.db.command({
                 "create": view_name,
-                "viewOn": "appointments",
+                "viewOn": "Appointment",
                 "pipeline": pipeline
             })
             

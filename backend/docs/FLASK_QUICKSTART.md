@@ -38,7 +38,7 @@ nano .env
 
 Paste this content:
 ```dotenv
-MONGODB_URI=mongodb+srv://habuq028_db_user:n3HdeFLHS5iE7dAb@glenmorewellnesscluster.zfgmoag.mongodb.net/?appName=GlenmoreWellnessCluster
+MONGODB_URL=mongodb+srv://username:password.zfgmoag.mongodb.net/?appName=GlenmoreWellnessCluster
 MONGODB_DB_NAME=GlenmoreWellnessDB
 ```
 
