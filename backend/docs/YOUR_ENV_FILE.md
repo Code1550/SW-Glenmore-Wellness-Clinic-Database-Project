@@ -11,7 +11,7 @@ MONGODB_DB_NAME=GlenmoreWellnessDB
 
 1. **Copy the file** to your project:
    ```bash
-   cd /workspaces/SW-Glenmore-Wellness-Clinic-Database-Project/backend_v2
+   cd /workspaces/SW-Glenmore-Wellness-Clinic-Database-Project/backend/clinic_api
    ```
 
 2. **Create .env** file:
@@ -59,8 +59,8 @@ So your configuration will work perfectly!
 
 1. **Never commit .env to Git** - it's already in .gitignore
 2. Your database credentials are:
-   - Username: `habuq028_db_user`
-   - Password: `n3HdeFLHS5iE7dAb`
+   - Username: `username`
+   - Password: `password`
    - Cluster: `glenmorewellnesscluster.zfgmoag.mongodb.net`
    - Database: `GlenmoreWellnessDB`
 
