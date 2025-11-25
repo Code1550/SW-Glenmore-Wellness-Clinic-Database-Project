@@ -20,7 +20,7 @@ export default function Prescriptions() {
     const loadPrescriptions = async () => {
       try {
         setLoadingList(true)
-        const response = await get<any>('/prescriptions/all')
+        const response = await get<any[]>('/prescriptions/all')
         setPrescriptionList(response || [])
       } catch (e) {
         console.error('Failed to load prescriptions list', e)

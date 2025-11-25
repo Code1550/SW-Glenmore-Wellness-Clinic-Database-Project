@@ -261,6 +261,7 @@ class LabTestOrderBase(BaseModel):
     visit_id: int
     ordered_by: int  # Staff ID
     test_name: str
+    ordered_at: Optional[datetime] = None  # When test was ordered
     performed_by: Optional[int] = None  # Staff ID
     result_at: Optional[datetime] = None
     notes: Optional[str] = None
@@ -280,6 +281,9 @@ class DeliveryBase(BaseModel):
     delivery_id: Optional[int] = None
     visit_id: int
     performed_by: int  # Staff ID
+    delivery_date: Optional[str] = None
+    end_time: Optional[str] = None
+    notes: Optional[str] = None
 
 class DeliveryCreate(DeliveryBase):
     pass

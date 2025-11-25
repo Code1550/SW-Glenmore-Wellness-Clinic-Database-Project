@@ -205,6 +205,13 @@ class LabTestOrderCRUD:
         lab_test_dict = lab_test.model_dump()
         lab_test_dict["labtest_id"] = labtest_id
         
+        # Set ordered_at to current time if not provided
+        if not lab_test_dict.get("ordered_at"):
+            lab_test_dict["ordered_at"] = datetime.now()
+        
+        # Convert datetime fields to ISO format for MongoDB
+        if lab_test_dict.get("ordered_at"):
+            lab_test_dict["ordered_at"] = lab_test_dict["ordered_at"].isoformat()
         if lab_test_dict.get("result_at"):
             lab_test_dict["result_at"] = lab_test_dict["result_at"].isoformat()
         
@@ -230,11 +237,17 @@ class LabTestOrderCRUD:
                 'visit_id': lab_test_data.get('visit_id') or lab_test_data.get('Visit_Id'),
                 'ordered_by': lab_test_data.get('ordered_by') or lab_test_data.get('Ordered_By'),
                 'test_name': lab_test_data.get('test_name') or lab_test_data.get('Test_Name'),
+                'ordered_at': lab_test_data.get('ordered_at') or lab_test_data.get('Ordered_At'),
                 'performed_by': lab_test_data.get('performed_by') or lab_test_data.get('Performed_By') or lab_test_data.get('performedBy'),
                 'result_at': lab_test_data.get('result_at') or lab_test_data.get('Result_At'),
                 'notes': lab_test_data.get('notes') or lab_test_data.get('Result_Text') or lab_test_data.get('Notes') or ''
             }
 
+            if norm.get('ordered_at') and isinstance(norm.get('ordered_at'), str):
+                try:
+                    norm['ordered_at'] = datetime.fromisoformat(norm['ordered_at'])
+                except ValueError:
+                    norm['ordered_at'] = None
             if norm.get('result_at') and isinstance(norm.get('result_at'), str):
                 try:
                     norm['result_at'] = datetime.fromisoformat(norm['result_at'])
@@ -288,7 +301,7 @@ class LabTestOrderCRUD:
 
     @classmethod
     def get_by_date(cls, date_str: str) -> List[dict]:
-        """Get lab tests that have results on a given date (ISO date 'YYYY-MM-DD').
+        """Get lab tests ordered or resulted on a given date (ISO date 'YYYY-MM-DD').
 
         Returns normalized dicts with canonical keys so the frontend can consume them
         regardless of legacy field name capitalization in the DB.
@@ -299,6 +312,8 @@ class LabTestOrderCRUD:
         # Query for common timestamp fields that start with the date
         query = {
             "$or": [
+                {"ordered_at": {"$regex": f"^{date_str}"}},
+                {"Ordered_At": {"$regex": f"^{date_str}"}},
                 {"result_at": {"$regex": f"^{date_str}"}},
                 {"Result_At": {"$regex": f"^{date_str}"}},
             ]
@@ -311,12 +326,15 @@ class LabTestOrderCRUD:
                 'visit_id': d.get('visit_id') or d.get('Visit_Id'),
                 'ordered_by': d.get('ordered_by') or d.get('Ordered_By'),
                 'test_name': d.get('test_name') or d.get('Test_Name') or d.get('Test') or d.get('test'),
+                'ordered_at': d.get('ordered_at') or d.get('Ordered_At'),
                 'performed_by': d.get('performed_by') or d.get('Performed_By') or d.get('performedBy'),
                 'result_at': d.get('result_at') or d.get('Result_At'),
                 'notes': d.get('notes') or d.get('Result_Text') or d.get('Notes') or ''
             }
 
             # convert to ISO string for JSON safety if datetime present
+            if isinstance(norm.get('ordered_at'), datetime):
+                norm['ordered_at'] = norm['ordered_at'].isoformat()
             if isinstance(norm.get('result_at'), datetime):
                 norm['result_at'] = norm['result_at'].isoformat()
 
@@ -336,14 +354,31 @@ class DeliveryCRUD:
         delivery_id = Database.get_next_sequence("delivery_id")
         
         delivery_dict = delivery.model_dump()
-        delivery_dict["delivery_id"] = delivery_id
-        # normalize delivery_date if provided (store as ISO string)
-        if delivery_dict.get("delivery_date") and isinstance(delivery_dict.get("delivery_date"), datetime):
-            delivery_dict["delivery_date"] = delivery_dict["delivery_date"].isoformat()
-
-        collection.insert_one(delivery_dict)
         
-        return Delivery(**delivery_dict)
+        # Store with CAPITALIZED field names to match existing data
+        capitalized_dict = {
+            "Delivery_Id": delivery_id,
+            "Visit_Id": delivery_dict.get("visit_id"),
+            "Delivered_By": delivery_dict.get("performed_by"),
+            "Start_Time": delivery_dict.get("delivery_date") or datetime.now().isoformat(),
+            "End_Time": delivery_dict.get("end_time"),
+            "Notes": delivery_dict.get("notes") or ""
+        }
+        
+        # Normalize datetime to ISO string if needed
+        if isinstance(capitalized_dict.get("Start_Time"), datetime):
+            capitalized_dict["Start_Time"] = capitalized_dict["Start_Time"].isoformat()
+        if capitalized_dict.get("End_Time") and isinstance(capitalized_dict.get("End_Time"), datetime):
+            capitalized_dict["End_Time"] = capitalized_dict["End_Time"].isoformat()
+
+        collection.insert_one(capitalized_dict)
+        
+        # Return normalized for the model
+        return Delivery(
+            delivery_id=delivery_id,
+            visit_id=delivery_dict.get("visit_id"),
+            performed_by=delivery_dict.get("performed_by")
+        )
     
     @classmethod
     def get_by_visit(cls, visit_id: int) -> Optional[Delivery]:

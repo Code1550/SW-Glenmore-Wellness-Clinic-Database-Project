@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { getInvoiceCalculatedTotal, getInvoiceAggregation } from '../../api/functions'
+import { get } from '../../api/client'
 import LoadingSpinner from '../common/LoadingSpinner'
 import ErrorMessage from '../common/ErrorMessage'
 
@@ -8,60 +8,299 @@ interface Props {
 }
 
 export default function PhysicianStatement({ invoiceId }: Props) {
-  const [data, setData] = useState<{
-    invoice_id: number
-    invoice_date: string
-    status: string
-    calculated_total: number
-    line_items_count: number
-  } | null>(null)
-
+  const [invoice, setInvoice] = useState<any>(null)
+  const [patient, setPatient] = useState<any>(null)
+  const [visit, setVisit] = useState<any>(null)
+  const [staff, setStaff] = useState<any>(null)
+  const [lineItems, setLineItems] = useState<any[]>([])
+  const [payments, setPayments] = useState<any[]>([])
+  const [procedures, setProcedures] = useState<any[]>([])
+  const [diagnoses, setDiagnoses] = useState<any[]>([])
+  
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-useEffect(() => {
-  const load = async () => {
-    try {
-      // prefer server aggregation
-      const agg = await getInvoiceAggregation(invoiceId).catch(() => null)
-      if (agg && agg.invoice_id) {
-        setData({
-          invoice_id: agg.invoice_id,
-          invoice_date: agg.invoice_date,
-          status: agg.status,
-          calculated_total: agg.total_amount ?? 0,
-          line_items_count: agg.line_count ?? (agg.items ? agg.items.length : 0)
-        })
-        return
+  useEffect(() => {
+    const load = async () => {
+      try {
+        // Get invoice directly
+        const inv = await get<any>(`/invoices/${invoiceId}`).catch(() => null)
+        
+        if (!inv) {
+          setError('Invoice not found')
+          setLoading(false)
+          return
+        }
+
+        setInvoice(inv)
+        
+        // Get patient info
+        const patientId = inv.patient_id || inv.Patient_Id
+        if (patientId) {
+          const pat = await get<any>(`/patients/${patientId}`).catch(() => null)
+          setPatient(pat)
+        }
+
+        // Get visit info
+        const visitId = inv.visit_id || inv.Visit_Id
+        if (visitId) {
+          const vis = await get<any>(`/visits/${visitId}`).catch(() => null)
+          setVisit(vis)
+          
+          // Get staff info from visit
+          const staffId = vis?.staff_id || vis?.Staff_Id
+          if (staffId) {
+            const st = await get<any>(`/staff/${staffId}`).catch(() => null)
+            setStaff(st)
+          }
+
+          // Get procedures for visit
+          const procs = await get<any[]>(`/visits/${visitId}/procedures`).catch(() => [])
+          setProcedures(procs || [])
+
+          // Get diagnoses for visit
+          const diags = await get<any[]>(`/visits/${visitId}/diagnoses`).catch(() => [])
+          setDiagnoses(diags || [])
+        }
+
+        // Get invoice lines
+        const lines = await get<any[]>(`/invoices/${invoiceId}/lines`).catch(() => [])
+        setLineItems(lines || [])
+
+        // Get payments for invoice
+        const pays = await get<any[]>(`/invoices/${invoiceId}/payments`).catch(() => [])
+        setPayments(pays || [])
+
+      } catch (err) {
+        console.error('Fetch error:', err)
+        setError('Failed to load physician statement')
+      } finally {
+        setLoading(false)
       }
-
-      // fallback to client-side calculation
-      const res = await getInvoiceCalculatedTotal(invoiceId)
-      setData(res)
-    } catch (err) {
-      console.error('Fetch error:', err)
-      setError('Failed to load physician statement')
-    } finally {
-      setLoading(false)
     }
-  }
 
-  load()
-}, [invoiceId])
-
+    load()
+  }, [invoiceId])
 
   if (loading) return <LoadingSpinner />
   if (error) return <ErrorMessage message={error} />
-  if (!data) return <p>No data found.</p>
+  if (!invoice) return <p>No invoice data found.</p>
+
+  const getField = (obj: any, ...keys: string[]) => {
+    if (!obj) return null
+    for (const key of keys) {
+      if (obj[key] !== undefined && obj[key] !== null) return obj[key]
+    }
+    return null
+  }
+
+  const formatDate = (date: any) => {
+    if (!date) return 'N/A'
+    try {
+      return new Date(date).toLocaleDateString()
+    } catch {
+      return String(date)
+    }
+  }
+
+  const formatCurrency = (amount: any) => {
+    const num = Number(amount) || 0
+    return `$${num.toFixed(2)}`
+  }
+
+  // Calculate totals
+  const lineTotal = lineItems.reduce((sum, item) => {
+    const qty = Number(getField(item, 'qty', 'Qty', 'quantity')) || 0
+    const price = Number(getField(item, 'unit_price', 'Unit_Price', 'price')) || 0
+    return sum + (qty * price)
+  }, 0)
+
+  const totalPaid = payments.reduce((sum, payment) => {
+    const amount = Number(getField(payment, 'amount', 'Amount')) || 0
+    return sum + amount
+  }, 0)
+
+  const balance = lineTotal - totalPaid
 
   return (
-    <div className="physician-statement">
-      <h3>Physician Statement</h3>
-      <p><strong>Invoice ID:</strong> {data.invoice_id}</p>
-      <p><strong>Date:</strong> {data.invoice_date}</p>
-      <p><strong>Status:</strong> {data.status}</p>
-      <p><strong>Total:</strong> ${data.calculated_total.toFixed(2)}</p>
-      <p><strong>Line Items:</strong> {data.line_items_count}</p>
+    <div style={{
+      fontFamily: 'Arial, sans-serif',
+      maxWidth: '800px',
+      margin: '0 auto',
+      border: '2px solid #000',
+      padding: '2rem',
+      backgroundColor: '#fff'
+    }}>
+      {/* Clinic Header */}
+      <div style={{ textAlign: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #000', paddingBottom: '1rem' }}>
+        <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>SW Glenmore Wellness Clinic</h2>
+        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}>Calgary, Alberta, Canada</p>
+        <p style={{ margin: '0.25rem 0', fontSize: '0.9rem' }}>Phone: (403) 555-0100 | Fax: (403) 555-0101</p>
+      </div>
+
+      <h3 style={{ textAlign: 'center', margin: '1rem 0' }}>INSURANCE RECEIPT / PHYSICIAN STATEMENT</h3>
+
+      {/* Patient Information */}
+      <div style={{ marginBottom: '1rem', borderBottom: '1px solid #ccc', paddingBottom: '0.75rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Patient Information</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.9rem' }}>
+          <div><strong>Name:</strong> {getField(patient, 'first_name', 'First_Name')} {getField(patient, 'last_name', 'Last_Name')}</div>
+          <div><strong>Patient ID:</strong> {getField(patient, 'patient_id', 'Patient_Id')}</div>
+          <div><strong>Date of Birth:</strong> {formatDate(getField(patient, 'date_of_birth', 'Date_Of_Birth'))}</div>
+          <div><strong>Health Card #:</strong> {getField(patient, 'gov_card_no', 'Gov_Card_No') || 'N/A'}</div>
+          <div><strong>Insurance #:</strong> {getField(patient, 'insurance_no', 'Insurance_No') || 'N/A'}</div>
+          <div><strong>Phone:</strong> {getField(patient, 'phone', 'Phone')}</div>
+        </div>
+      </div>
+
+      {/* Professional Staff Information */}
+      <div style={{ marginBottom: '1rem', borderBottom: '1px solid #ccc', paddingBottom: '0.75rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Attending Physician/Professional</h4>
+        <div style={{ fontSize: '0.9rem' }}>
+          <div><strong>Name:</strong> Dr. {getField(staff, 'first_name', 'First_Name')} {getField(staff, 'last_name', 'Last_Name')}</div>
+          <div><strong>Staff ID:</strong> {getField(staff, 'staff_id', 'Staff_Id')}</div>
+          <div><strong>Email:</strong> {getField(staff, 'email', 'Email')}</div>
+        </div>
+      </div>
+
+      {/* Visit Information */}
+      <div style={{ marginBottom: '1rem', borderBottom: '1px solid #ccc', paddingBottom: '0.75rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Visit Details</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.9rem' }}>
+          <div><strong>Visit ID:</strong> {getField(visit, 'visit_id', 'Visit_Id')}</div>
+          <div><strong>Visit Type:</strong> {getField(visit, 'visit_type', 'Visit_Type') || 'N/A'}</div>
+          <div><strong>Visit Date:</strong> {formatDate(getField(visit, 'start_time', 'Start_Time'))}</div>
+          <div><strong>Invoice Date:</strong> {formatDate(getField(invoice, 'invoice_date', 'Invoice_Date'))}</div>
+        </div>
+      </div>
+
+      {/* Diagnoses */}
+      {diagnoses.length > 0 && (
+        <div style={{ marginBottom: '1rem', borderBottom: '1px solid #ccc', paddingBottom: '0.75rem' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Diagnoses</h4>
+          <ul style={{ margin: '0', paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
+            {diagnoses.map((diag, idx) => (
+              <li key={idx}>
+                <strong>Code:</strong> {getField(diag, 'code', 'Code') || 'N/A'} - {getField(diag, 'description', 'Description') || getField(diag, 'diagnosis_name', 'Diagnosis_Name') || 'N/A'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Procedures */}
+      {procedures.length > 0 && (
+        <div style={{ marginBottom: '1rem', borderBottom: '1px solid #ccc', paddingBottom: '0.75rem' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Procedures Performed</h4>
+          <ul style={{ margin: '0', paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
+            {procedures.map((proc, idx) => (
+              <li key={idx}>
+                <strong>Code:</strong> {getField(proc, 'code', 'Code') || 'N/A'} - {getField(proc, 'description', 'Description') || getField(proc, 'procedure_name', 'Procedure_Name') || 'N/A'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Fee Details - Line Items */}
+      <div style={{ marginBottom: '1rem', borderBottom: '1px solid #ccc', paddingBottom: '0.75rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Fee Details</h4>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #000' }}>
+              <th style={{ textAlign: 'left', padding: '0.5rem' }}>Description</th>
+              <th style={{ textAlign: 'center', padding: '0.5rem' }}>Qty</th>
+              <th style={{ textAlign: 'right', padding: '0.5rem' }}>Unit Price</th>
+              <th style={{ textAlign: 'right', padding: '0.5rem' }}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lineItems.map((item, idx) => {
+              const qty = Number(getField(item, 'qty', 'Qty', 'quantity')) || 0
+              const price = Number(getField(item, 'unit_price', 'Unit_Price', 'price')) || 0
+              const total = qty * price
+              return (
+                <tr key={idx}>
+                  <td style={{ padding: '0.5rem' }}>{getField(item, 'description', 'Description') || 'Service'}</td>
+                  <td style={{ textAlign: 'center', padding: '0.5rem' }}>{qty}</td>
+                  <td style={{ textAlign: 'right', padding: '0.5rem' }}>{formatCurrency(price)}</td>
+                  <td style={{ textAlign: 'right', padding: '0.5rem' }}>{formatCurrency(total)}</td>
+                </tr>
+              )
+            })}
+            <tr style={{ borderTop: '1px solid #000', fontWeight: 'bold' }}>
+              <td colSpan={3} style={{ textAlign: 'right', padding: '0.5rem' }}>Subtotal:</td>
+              <td style={{ textAlign: 'right', padding: '0.5rem' }}>{formatCurrency(lineTotal)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* Payments */}
+      <div style={{ marginBottom: '1rem', borderBottom: '1px solid #ccc', paddingBottom: '0.75rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem' }}>Payment Record</h4>
+        {payments.length === 0 ? (
+          <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', fontStyle: 'italic' }}>No payments recorded</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #000' }}>
+                <th style={{ textAlign: 'left', padding: '0.5rem' }}>Date</th>
+                <th style={{ textAlign: 'left', padding: '0.5rem' }}>Method</th>
+                <th style={{ textAlign: 'right', padding: '0.5rem' }}>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((payment, idx) => (
+                <tr key={idx}>
+                  <td style={{ padding: '0.5rem' }}>{formatDate(getField(payment, 'payment_date', 'Payment_Date'))}</td>
+                  <td style={{ padding: '0.5rem' }}>{getField(payment, 'payment_method', 'Payment_Method') || 'N/A'}</td>
+                  <td style={{ textAlign: 'right', padding: '0.5rem' }}>{formatCurrency(getField(payment, 'amount', 'Amount'))}</td>
+                </tr>
+              ))}
+              <tr style={{ borderTop: '1px solid #000', fontWeight: 'bold' }}>
+                <td colSpan={2} style={{ textAlign: 'right', padding: '0.5rem' }}>Total Paid:</td>
+                <td style={{ textAlign: 'right', padding: '0.5rem' }}>{formatCurrency(totalPaid)}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Balance Summary */}
+      <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f5f5f5', border: '1px solid #999' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', fontSize: '1rem' }}>
+          <div style={{ fontWeight: 'bold' }}>Total Charges:</div>
+          <div style={{ textAlign: 'right' }}>{formatCurrency(lineTotal)}</div>
+          <div style={{ fontWeight: 'bold' }}>Total Payments:</div>
+          <div style={{ textAlign: 'right' }}>-{formatCurrency(totalPaid)}</div>
+          <div style={{ fontWeight: 'bold', fontSize: '1.1rem', borderTop: '2px solid #000', paddingTop: '0.5rem' }}>Balance Due:</div>
+          <div style={{ textAlign: 'right', fontSize: '1.1rem', fontWeight: 'bold', borderTop: '2px solid #000', paddingTop: '0.5rem' }}>
+            {formatCurrency(balance)}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={{ marginTop: '2rem', fontSize: '0.85rem', color: '#666', textAlign: 'center' }}>
+        <p style={{ margin: '0.5rem 0' }}>Invoice #{getField(invoice, 'invoice_id', 'Invoice_Id')} | Status: {getField(invoice, 'status', 'Status')}</p>
+        <p style={{ margin: '0.5rem 0' }}>For insurance claims, please submit this statement with your claim form.</p>
+        <button 
+          onClick={() => window.print()} 
+          style={{
+            marginTop: '1rem',
+            padding: '0.75rem 1.5rem',
+            backgroundColor: '#4285f4',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '1rem'
+          }}
+        >
+          Print Receipt
+        </button>
+      </div>
     </div>
   )
 }

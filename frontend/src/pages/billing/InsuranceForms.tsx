@@ -1,49 +1,34 @@
 import React, { useEffect, useState } from 'react'
-import { getInsurers, createInsurer } from '../../api/functions'
-import { getInvoiceSummary, InvoicePaymentSummary } from '../../api/views'
+import { get } from '../../api/client'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import ErrorMessage from '../../components/common/ErrorMessage'
 import PhysicianStatement from '../../components/billing/PhysicianStatement'
 
 export default function InsuranceForms() {
-  const [insurers, setInsurers] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [name, setName] = useState('')
-
   // For insurance receipt/statement
-  const [invoices, setInvoices] = useState<InvoicePaymentSummary[]>([])
+  const [invoices, setInvoices] = useState<any[]>([])
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null)
   const [invoiceLoading, setInvoiceLoading] = useState(true)
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
 
-  useEffect(() => {
-    getInsurers()
-      .then(setInsurers)
-      .catch(() => setError('Failed to load insurers'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  // Load invoices for selection
+  // Load invoices directly from the invoices collection
   useEffect(() => {
     setInvoiceLoading(true)
-    getInvoiceSummary()
-      .then(setInvoices)
+    get<any[]>('/invoices')
+      .then((data) => setInvoices(data || []))
       .catch(() => setInvoiceError('Failed to load invoices'))
       .finally(() => setInvoiceLoading(false))
   }, [])
 
-  const handleCreate = async () => {
-    try {
-      const newIns = await createInsurer({ name })
-      setInsurers((s) => [newIns, ...s])
-      setName('')
-    } catch (e) {
-      alert('Failed to create insurer')
+  // Helper to get field values with case tolerance
+  const getField = (obj: any, ...keys: string[]) => {
+    if (!obj) return null
+    for (const key of keys) {
+      if (obj[key] !== undefined && obj[key] !== null) return obj[key]
     }
+    return null
   }
 
-  // Only show loading/error for invoices, not insurers
   if (invoiceLoading) return <LoadingSpinner />
   if (invoiceError) return <ErrorMessage message={invoiceError} />
 
@@ -61,11 +46,18 @@ export default function InsuranceForms() {
             onChange={e => setSelectedInvoiceId(Number(e.target.value) || null)}
           >
             <option value="">-- Select Invoice --</option>
-            {invoices.map(inv => (
-              <option key={inv.invoice_id} value={inv.invoice_id}>
-                #{inv.invoice_id} | {inv.patient_name} | {inv.invoice_date} | ${inv.total_amount.toFixed(2)}
-              </option>
-            ))}
+            {invoices.map((inv, idx) => {
+              const invId = getField(inv, 'invoice_id', 'Invoice_Id')
+              const invDate = getField(inv, 'invoice_date', 'Invoice_Date') || 'N/A'
+              const patientId = getField(inv, 'patient_id', 'Patient_Id')
+              const status = getField(inv, 'status', 'Status') || 'Unknown'
+              const totalAmount = getField(inv, 'total_amount', 'Total_Amount') || 0
+              return (
+                <option key={`inv-${invId || idx}`} value={invId}>
+                  Invoice #{invId} | Patient: {patientId} | {invDate} | ${Number(totalAmount).toFixed(2)} | {status}
+                </option>
+              )
+            })}
           </select>
         )}
       </div>
