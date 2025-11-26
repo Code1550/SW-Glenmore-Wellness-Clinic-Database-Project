@@ -29,8 +29,12 @@ export default function MonthlyActivityReport() {
     setLoading(true)
     setError(null)
     try {
-      const data = await get<any>(`/reports/monthly-activity?month=${parseInt(selectedMonth)}&year=${parseInt(selectedYear)}`)
-      setReportData(data)
+      const response = await get<any>(`/reports/monthly-activity?month=${selectedMonth}&year=${selectedYear}`)
+      // console.log("Full response:", response)
+      // console.log("Keys in response:", Object.keys(response))
+      setReportData(response) // <-- FIX: extract actual data payload
+      // console.log("Data returned:", response.data)
+      
     } catch (e) {
       console.error('Failed to load monthly activity report', e)
       setError('Failed to load monthly activity report')
@@ -99,11 +103,11 @@ export default function MonthlyActivityReport() {
       ) : (
         <div>
           {/* Summary Section */}
-          {reportData.summary && (
+          {reportData.metrics && (
             <div style={{ marginBottom: '2rem', background: '#f9f9f9', padding: '1rem', borderRadius: 6 }}>
               <h3 style={{ marginTop: 0 }}>Summary</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                {Object.entries(reportData.summary).map(([key, value]) => (
+                {Object.entries(reportData.metrics).map(([key, value]) => (
                   <div key={key} style={{ background: 'white', padding: '0.75rem', borderRadius: 4, border: '1px solid #e0e0e0' }}>
                     <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '0.25rem' }}>
                       {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
