@@ -3,6 +3,8 @@ import { get } from '../../api/client'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import ErrorMessage from '../../components/common/ErrorMessage'
 import PhysicianStatement from '../../components/billing/PhysicianStatement'
+import './InsurancePrint.css'
+import '../../styles/logLayout.css'
 
 export default function InsuranceForms() {
   // For insurance receipt/statement
@@ -33,36 +35,45 @@ export default function InsuranceForms() {
   if (invoiceError) return <ErrorMessage message={invoiceError} />
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <h2>Insurance Receipt / Physician Statement</h2>
-      <div style={{ marginBottom: '1rem' }}>
-        <label htmlFor="invoice-select"><strong>Select Invoice:</strong> </label>
+    <div className="log-page">
+      <div className="toolbar toolbar-centered" style={{ gap:16 }}>
+        <h3 style={{ margin:0 }}>Insurance Receipt / Physician Statement</h3>
         {invoices.length === 0 ? (
-          <span style={{ marginLeft: 8 }}>No invoices available.</span>
+          <span className="muted">No invoices</span>
         ) : (
-          <select
-            id="invoice-select"
-            value={selectedInvoiceId ?? ''}
-            onChange={e => setSelectedInvoiceId(Number(e.target.value) || null)}
-          >
-            <option value="">-- Select Invoice --</option>
-            {invoices.map((inv, idx) => {
-              const invId = getField(inv, 'invoice_id', 'Invoice_Id')
-              const invDate = getField(inv, 'invoice_date', 'Invoice_Date') || 'N/A'
-              const patientId = getField(inv, 'patient_id', 'Patient_Id')
-              const status = getField(inv, 'status', 'Status') || 'Unknown'
-              const totalAmount = getField(inv, 'total_amount', 'Total_Amount') || 0
-              return (
-                <option key={`inv-${invId || idx}`} value={invId}>
-                  Invoice #{invId} | Patient: {patientId} | {invDate} | ${Number(totalAmount).toFixed(2)} | {status}
-                </option>
-              )
-            })}
-          </select>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+            <label htmlFor="invoice-select" style={{ fontWeight:600 }}>Select Invoice</label>
+            <select
+              className="select"
+              id="invoice-select"
+              value={selectedInvoiceId ?? ''}
+              onChange={e => {
+                const raw = e.target.value
+                if (!raw) { setSelectedInvoiceId(null); return }
+                const parsed = parseInt(raw, 10)
+                setSelectedInvoiceId(Number.isNaN(parsed) ? null : parsed)
+              }}
+              style={{ minWidth:280 }}
+            >
+              <option value="">-- Select Invoice --</option>
+              {invoices.map((inv, idx) => {
+                const invId = getField(inv, 'invoice_id', 'Invoice_Id')
+                const invDate = getField(inv, 'invoice_date', 'Invoice_Date') || 'N/A'
+                const patientId = getField(inv, 'patient_id', 'Patient_Id')
+                const status = getField(inv, 'status', 'Status') || 'Unknown'
+                const totalAmount = getField(inv, 'total_amount', 'Total_Amount') || 0
+                return (
+                  <option key={`inv-${invId || idx}`} value={invId}>
+                    #{invId} Patient {patientId} | {invDate} | ${Number(totalAmount).toFixed(2)} | {status}
+                  </option>
+                )
+              })}
+            </select>
+          </div>
         )}
       </div>
       {selectedInvoiceId && (
-        <div style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '1rem', background: '#fafaff' }}>
+        <div className="card">
           <PhysicianStatement invoiceId={selectedInvoiceId} />
         </div>
       )}

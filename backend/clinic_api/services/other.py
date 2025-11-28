@@ -341,6 +341,40 @@ class LabTestOrderCRUD:
             results.append(norm)
 
         return results
+    
+    @classmethod
+    def update(cls, labtest_id: int, lab_test: LabTestOrderCreate) -> Optional[LabTestOrder]:
+        """Update a lab test order"""
+        collection = Database.get_collection(cls.collection_name)
+        
+        lab_test_dict = lab_test.model_dump()
+        
+        # Remove labtest_id from update dict if present (shouldn't be updated)
+        lab_test_dict.pop('labtest_id', None)
+        
+        # Convert datetime fields to ISO format for MongoDB
+        if lab_test_dict.get("ordered_at"):
+            if isinstance(lab_test_dict["ordered_at"], datetime):
+                lab_test_dict["ordered_at"] = lab_test_dict["ordered_at"].isoformat()
+        if lab_test_dict.get("result_at"):
+            if isinstance(lab_test_dict["result_at"], datetime):
+                lab_test_dict["result_at"] = lab_test_dict["result_at"].isoformat()
+        
+        result = collection.update_one(
+            {"labtest_id": labtest_id},
+            {"$set": lab_test_dict}
+        )
+        
+        if result.modified_count > 0 or result.matched_count > 0:
+            return cls.get(labtest_id)
+        return None
+    
+    @classmethod
+    def delete(cls, labtest_id: int) -> bool:
+        """Delete a lab test order"""
+        collection = Database.get_collection(cls.collection_name)
+        result = collection.delete_one({"labtest_id": labtest_id})
+        return result.deleted_count > 0
 
 
 class DeliveryCRUD:
@@ -435,6 +469,60 @@ class DeliveryCRUD:
             results.append(cls._normalize_delivery_doc(d))
         return results
 
+    @classmethod
+    def update(cls, delivery_id: int, updates: dict) -> Optional[Delivery]:
+        """Update a delivery record by id. Accepts normalized keys and maps to legacy as needed."""
+        collection = Database.get_collection(cls.collection_name)
+
+        # Map normalized keys to legacy storage format when present
+        update_doc: dict = {}
+        if 'visit_id' in updates:
+            update_doc['Visit_Id'] = updates['visit_id']
+        if 'performed_by' in updates:
+            update_doc['Delivered_By'] = updates['performed_by']
+        if 'delivery_date' in updates:
+            dt = updates['delivery_date']
+            update_doc['Start_Time'] = dt.isoformat() if isinstance(dt, datetime) else dt
+        if 'end_time' in updates:
+            et = updates['end_time']
+            update_doc['End_Time'] = et.isoformat() if isinstance(et, datetime) else et
+        if 'notes' in updates:
+            update_doc['Notes'] = updates['notes'] or ""
+
+        result = collection.find_one_and_update(
+            {"Delivery_Id": delivery_id},
+            {"$set": update_doc},
+            projection={"_id": 0},
+            return_document=ReturnDocument.AFTER
+        )
+        if not result:
+            # Try canonical key if data was stored that way
+            result = collection.find_one_and_update(
+                {"delivery_id": delivery_id},
+                {"$set": updates},
+                projection={"_id": 0},
+                return_document=ReturnDocument.AFTER
+            )
+
+        if result:
+            norm = cls._normalize_delivery_doc(result)
+            try:
+                return Delivery(**norm)
+            except Exception:
+                return None
+        return None
+
+    @classmethod
+    def delete(cls, delivery_id: int) -> bool:
+        """Delete a delivery record by id, supporting legacy and canonical keys."""
+        collection = Database.get_collection(cls.collection_name)
+        res = collection.delete_one({"Delivery_Id": delivery_id})
+        if res.deleted_count > 0:
+            return True
+        # Fallback to canonical key
+        res2 = collection.delete_one({"delivery_id": delivery_id})
+        return res2.deleted_count > 0
+
 
 class RecoveryStayCRUD:
     collection_name = "RecoveryStay"
@@ -469,6 +557,63 @@ class RecoveryStayCRUD:
                 stay_data["discharge_time"] = datetime.fromisoformat(stay_data["discharge_time"])
             return RecoveryStay(**stay_data)
         return None
+
+    @classmethod
+    def get_by_date(cls, date_str: str) -> List[dict]:
+        """Get recovery stays for a given local date (YYYY-MM-DD).
+
+        Matches stays where admit_time or discharge_time starts with the date.
+        Returns JSON-serializable dicts with isoformat strings for datetime fields.
+        """
+        collection = Database.get_collection(cls.collection_name)
+
+        query = {
+            "$or": [
+                {"admit_time": {"$regex": f"^{date_str}"}},
+                {"discharge_time": {"$regex": f"^{date_str}"}},
+            ]
+        }
+
+        cursor = collection.find(query, {"_id": 0})
+        results: List[dict] = []
+        for d in cursor:
+            # Ensure datetime-like fields are strings
+            out = {
+                "stay_id": d.get("stay_id"),
+                "patient_id": d.get("patient_id"),
+                "admit_time": d.get("admit_time"),
+                "discharge_time": d.get("discharge_time"),
+                "discharged_by": d.get("discharged_by"),
+                "notes": d.get("notes") or "",
+            }
+            # Convert datetime to iso if objects leaked in
+            if isinstance(out.get("admit_time"), datetime):
+                out["admit_time"] = out["admit_time"].isoformat()
+            if isinstance(out.get("discharge_time"), datetime):
+                out["discharge_time"] = out["discharge_time"].isoformat()
+            results.append(out)
+
+        return results
+
+    @classmethod
+    def get_recent(cls, limit: int = 50) -> List[dict]:
+        """Get most recent recovery stays, sorted by stay_id desc.
+        Returns JSON-serializable dicts similar to get_by_date.
+        """
+        collection = Database.get_collection(cls.collection_name)
+        cursor = collection.find({}, {"_id": 0}).sort("stay_id", -1).limit(limit)
+        results: List[dict] = []
+        for d in cursor:
+            out = {
+                "stay_id": d.get("stay_id"),
+                "patient_id": d.get("patient_id"),
+                "admit_time": d.get("admit_time"),
+                "discharge_time": d.get("discharge_time"),
+                "discharged_by": d.get("discharged_by"),
+                "notes": d.get("notes") or "",
+            }
+            results.append(out)
+        return results
 
     @classmethod
     def update(cls, stay_id: int, updates: dict) -> Optional[RecoveryStay]:

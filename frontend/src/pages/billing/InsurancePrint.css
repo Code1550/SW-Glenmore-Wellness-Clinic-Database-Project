@@ -1,0 +1,8 @@
+/* Print styles for physician statement (insurance receipt) */
+@media print {
+  body * { visibility: hidden; }
+  .physician-statement, .physician-statement * { visibility: visible; }
+  .physician-statement { position: absolute; left: 0; top: 0; width: 100%; border: 2px solid #000 !important; }
+  .physician-statement button { display: none !important; }
+  @page { margin: 1cm; }
+}

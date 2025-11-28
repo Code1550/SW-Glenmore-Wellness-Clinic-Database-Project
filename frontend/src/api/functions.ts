@@ -3,7 +3,7 @@
  * Endpoints for calling server-side stored functions
  */
 
-import { get, post } from './client';
+import { get, post, put, del } from './client';
 
 // ============================================
 // TYPES
@@ -339,14 +339,7 @@ export const createRecoveryObservation = async (data: {
  * Update a recovery stay (used for discharge/sign-off)
  */
 export const updateRecoveryStay = async (stayId: number, data: any): Promise<RecoveryStayResponse> => {
-  return fetch(`${import.meta.env.VITE_API_URL || ''}/recovery-stays/${stayId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  }).then((r) => {
-    if (!r.ok) throw new Error('Failed to update stay');
-    return r.json();
-  });
+  return put<RecoveryStayResponse>(`/recovery-stays/${stayId}`, data);
 };
 
 /**
@@ -364,10 +357,45 @@ export const getRecoveryObservationsByStay = async (stayId: number): Promise<Rec
 };
 
 /**
+ * Get recovery stays by date (YYYY-MM-DD)
+ */
+export const getRecoveryStaysByDate = async (dateStr: string): Promise<any[]> => {
+  return get<any[]>(`/recovery-stays/date/${dateStr}`);
+};
+
+/**
+ * Get today's recovery stays
+ */
+export const getRecoveryStaysToday = async (): Promise<any[]> => {
+  return get<any[]>(`/recovery-stays/today`);
+};
+
+/**
+ * Get recent recovery stays
+ */
+export const getRecoveryStaysRecent = async (limit: number = 50): Promise<any[]> => {
+  return get<any[]>(`/recovery-stays/recent?limit=${limit}`);
+};
+
+/**
  * Create lab test
  */
 export const createLabTest = async (data: any): Promise<any> => {
   return post<any>('/lab-tests', data);
+};
+
+/**
+ * Update lab test
+ */
+export const updateLabTest = async (labtestId: number, data: any): Promise<any> => {
+  return put<any>(`/lab-tests/${labtestId}`, data);
+};
+
+/**
+ * Delete lab test
+ */
+export const deleteLabTest = async (labtestId: number): Promise<void> => {
+  return del<void>(`/lab-tests/${labtestId}`);
 };
 
 // ============================================
@@ -419,6 +447,20 @@ export const getDrugs = async (): Promise<any[]> => {
  */
 export const createDelivery = async (data: any): Promise<any> => {
   return post<any>('/deliveries', data);
+};
+
+/**
+ * Delivery update
+ */
+export const updateDelivery = async (deliveryId: number, data: any): Promise<any> => {
+  return put<any>(`/deliveries/${deliveryId}`, data);
+};
+
+/**
+ * Delivery delete
+ */
+export const deleteDelivery = async (deliveryId: number): Promise<void> => {
+  return del<void>(`/deliveries/${deliveryId}`);
 };
 
 

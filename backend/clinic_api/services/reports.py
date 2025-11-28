@@ -161,30 +161,88 @@ class ReportService:
             }}
         ]
 
-        invoices = [_sanitize_for_json(inv) for inv in db.Invoice.aggregate(pipeline)]
+        raw_invoices = list(db.Invoice.aggregate(pipeline))
 
-        patients = {}
-        for inv in invoices:
+        patients: Dict[Any, Dict[str, Any]] = {}
+        now = datetime.utcnow()
+        for inv in raw_invoices:
             pid = inv.get("patient_id")
             if pid not in patients:
-                patients[pid] = {"patient_id": pid, "patient_name": inv.get("patient_name"),
-                                 "invoices": [], "total_invoiced": 0.0, "payments_received": 0.0, "balance": 0.0}
-            patients[pid]["invoices"].append(inv)
+                patients[pid] = {
+                    "patient_id": pid,
+                    "patient_name": inv.get("patient_name"),
+                    "invoices": [],
+                    "total_invoiced": 0.0,
+                    "payments_received": 0.0,
+                    "balance": 0.0,
+                    "services": {},  # temp dict description -> agg
+                    "payments": [],
+                    "max_aging_days": 0
+                }
+
+            # Aging & bucket (only relevant if unpaid portion remains)
+            invoice_date_dt: datetime = inv.get("invoice_date_dt")
+            days_outstanding = (now - invoice_date_dt).days if isinstance(invoice_date_dt, datetime) else 0
+            balance_due = inv.get("balance_due") or 0.0
+            if balance_due > 0 and days_outstanding > patients[pid]["max_aging_days"]:
+                patients[pid]["max_aging_days"] = days_outstanding
+            if balance_due > 0:
+                if days_outstanding <= 30:
+                    aging_bucket = "0-30"
+                elif days_outstanding <= 60:
+                    aging_bucket = "31-60"
+                else:
+                    aging_bucket = "61+"
+            else:
+                aging_bucket = "paid"
+
+            # Enrich lines with totals & accumulate services
+            for line in inv.get("lines", []):
+                qty = line.get("qty", 1)
+                unit_price = line.get("unit_price", 0.0)
+                line_total = qty * unit_price
+                line["line_total"] = line_total
+                desc = line.get("description", "Unknown")
+                svc = patients[pid]["services"].setdefault(desc, {"description": desc, "qty": 0, "amount": 0.0})
+                svc["qty"] += qty
+                svc["amount"] += line_total
+
+            # Aggregate payments list (flatten)
+            for pay in inv.get("payments", []):
+                patients[pid]["payments"].append({
+                    "payment_date": pay.get("payment_date"),
+                    "method": pay.get("method") or pay.get("payment_method"),
+                    "amount": pay.get("amount")
+                })
+
+            # Add enriched invoice snapshot
+            inv_enriched = inv.copy()
+            inv_enriched["days_outstanding"] = days_outstanding
+            inv_enriched["aging_bucket"] = aging_bucket
+            patients[pid]["invoices"].append(_sanitize_for_json(inv_enriched))
+
             patients[pid]["total_invoiced"] += inv.get("patient_portion") or 0.0
             patients[pid]["payments_received"] += inv.get("total_paid") or 0.0
-            patients[pid]["balance"] += inv.get("balance_due") or 0.0
+            patients[pid]["balance"] += balance_due
+
+        # Transform services temp dicts to list & determine status
+        for p in patients.values():
+            p["services"] = sorted([_sanitize_for_json(v) for v in p["services"].values()], key=lambda x: x["description"])
+            p["payments"] = sorted(p["payments"], key=lambda x: x.get("payment_date") or "")
+            p["status"] = "paid" if round(p["balance"], 2) <= 0 else ("partial" if p["payments_received"] > 0 else "unpaid")
 
         paid_list, unpaid_list = [], []
         totals = {"paid": {"total_invoiced": 0.0, "payments_received": 0.0, "balance": 0.0},
                   "unpaid": {"total_invoiced": 0.0, "payments_received": 0.0, "balance": 0.0}}
 
         for p in patients.values():
+            # Exclude fully paid from unpaid list
             if round(p["balance"], 2) <= 0:
-                paid_list.append(p)
+                paid_list.append(_sanitize_for_json(p))
                 for k in totals["paid"]:
                     totals["paid"][k] += p[k]
             else:
-                unpaid_list.append(p)
+                unpaid_list.append(_sanitize_for_json(p))
                 for k in totals["unpaid"]:
                     totals["unpaid"][k] += p[k]
 

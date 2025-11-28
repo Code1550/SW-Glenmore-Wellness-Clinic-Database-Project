@@ -6,6 +6,7 @@ import { get } from '../../api/client'
 import LoadingSpinner from '../../components/common/LoadingSpinner'
 import ErrorMessage from '../../components/common/ErrorMessage'
 import '../../components/billing/PrescriptionPrint.css'
+import '../../styles/logLayout.css'
 
 export default function Prescriptions() {
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<number | null>(null)
@@ -68,73 +69,61 @@ export default function Prescriptions() {
   }
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <h2>Prescriptions</h2>
-      
-      <div style={{ marginBottom: '2rem' }}>
-        <h3>Select Prescription</h3>
+    <div className="log-page">
+      <div className="toolbar toolbar-centered" style={{ gap:16 }}>
+        <h3 style={{ margin:0 }}>Prescriptions</h3>
         {loadingList ? (
-          <p>Loading prescriptions...</p>
+          <span className="muted">Loading...</span>
         ) : (
-          <div>
-            <label htmlFor="prescription-select" style={{ display: 'block', marginBottom: '0.5rem' }}>
-              Choose a prescription:
-            </label>
-            <select 
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
+            <label htmlFor="prescription-select" style={{ fontWeight:600 }}>Select Prescription</label>
+            <select
               id="prescription-select"
+              className="select"
               onChange={(e) => handlePrescriptionSelect(parseInt(e.target.value))}
               value={selectedPrescriptionId || ''}
-              style={{ 
-                padding: '0.5rem', 
-                fontSize: '1rem', 
-                width: '100%',
-                maxWidth: '600px'
-              }}
+              style={{ minWidth:300 }}
             >
-              <option value="">-- Select a Prescription --</option>
+              <option value="">-- Select Prescription --</option>
               {prescriptionList.map((rx) => {
                 const rxId = getField(rx, 'prescription_id', 'Prescription_Id')
                 const patientName = getField(rx, 'patient_name', 'Patient_Name') || 'Unknown Patient'
                 const drugName = getField(rx, 'drug_name', 'Drug_Name') || 'Unknown Drug'
                 const dispensedAt = getField(rx, 'dispensed_at', 'Dispensed_At')
                 const dosage = getField(rx, 'dosage', 'Dosage', 'Dosage_Instruction')
-                
                 return (
                   <option key={rxId} value={rxId}>
-                    Rx #{rxId} - {patientName} - {drugName} {dosage ? `(${dosage})` : ''} - {formatDate(dispensedAt)}
+                    Rx #{rxId} | {patientName} | {drugName} {dosage ? `(${dosage})` : ''} | {formatDate(dispensedAt)}
                   </option>
                 )
               })}
             </select>
-            {prescriptionList.length === 0 && !loadingList && (
-              <p style={{ color: '#666', marginTop: '0.5rem' }}>No prescriptions available.</p>
-            )}
           </div>
         )}
       </div>
 
+      {prescriptionList.length === 0 && !loadingList && (
+        <p className="muted" style={{ marginTop: '0.5rem' }}>No prescriptions available.</p>
+      )}
+
       {selectedPrescriptionId && (
-        <div style={{ marginTop: '2rem', borderTop: '2px solid #ccc', paddingTop: '2rem' }}>
-          <h3>Prescription Label & Receipt</h3>
-          
+        <div style={{ marginTop: '1rem' }}>
           {loading && <LoadingSpinner />}
           {error && <ErrorMessage message={error} />}
-          
           {prescriptionData && !loading && !error && (
-            <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-              <div>
-                <h4 style={{ marginBottom: '1rem' }}>Label (Patient Copy)</h4>
-                <PrescriptionLabel 
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+              <div className="card" style={{ flex: '1 1 300px' }}>
+                <h4 style={{ marginTop:0 }}>Label (Patient Copy)</h4>
+                <PrescriptionLabel
                   prescription={prescriptionData.prescription}
                   patient={prescriptionData.patient}
                   drug={prescriptionData.drug}
                   dispensedBy={prescriptionData.dispensed_by}
                 />
               </div>
-              
-              <div>
-                <h4 style={{ marginBottom: '1rem' }}>Receipt (Billing Copy)</h4>
-                <PrescriptionReceipt 
+              <div className="card" style={{ flex: '1 1 300px' }}>
+                <h4 style={{ marginTop:0 }}>Receipt (Billing Copy)</h4>
+                <PrescriptionReceipt
                   prescription={prescriptionData.prescription}
                   patient={prescriptionData.patient}
                   drug={prescriptionData.drug}

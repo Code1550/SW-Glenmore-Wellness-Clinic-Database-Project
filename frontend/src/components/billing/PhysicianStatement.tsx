@@ -21,6 +21,18 @@ export default function PhysicianStatement({ invoiceId }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Reset state before loading a new invoice to avoid showing stale data
+    setLoading(true)
+    setError(null)
+    setInvoice(null)
+    setPatient(null)
+    setVisit(null)
+    setStaff(null)
+    setLineItems([])
+    setPayments([])
+    setProcedures([])
+    setDiagnoses([])
+
     const load = async () => {
       try {
         // Get invoice directly
@@ -123,7 +135,7 @@ export default function PhysicianStatement({ invoiceId }: Props) {
   const balance = lineTotal - totalPaid
 
   return (
-    <div style={{
+    <div className="physician-statement" style={{
       fontFamily: 'Arial, sans-serif',
       maxWidth: '800px',
       margin: '0 auto',

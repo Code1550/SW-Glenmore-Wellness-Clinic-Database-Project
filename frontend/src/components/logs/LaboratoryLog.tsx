@@ -1,38 +1,42 @@
 import React, { useEffect, useState } from 'react'
 import { getActiveVisits } from '../../api/views'
-import { getLabTestsByVisit, createLabTest as apiCreateLabTest } from '../../api/functions'
+import { getLabTestsByVisit, createLabTest as apiCreateLabTest, updateLabTest, deleteLabTest } from '../../api/functions'
 import { get } from '../../api/client'
 import LoadingSpinner from '../common/LoadingSpinner'
 import ErrorMessage from '../common/ErrorMessage'
+import { getLocalDateString, formatMST, getMSTNow } from '../../utils/timeUtils'
+import './LaboratoryLog.css'
 
 type LabTest = any
 type Visit = any
 
 export default function LaboratoryLog({ visitId }: { visitId?: number }) {
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [visits, setVisits] = useState<Visit[]>([])
   const [staff, setStaff] = useState<any[]>([])
   const [labTests, setLabTests] = useState<LabTest[]>([])
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ visit_id: '', test_name: '', ordered_by: '' })
+  const [editingTest, setEditingTest] = useState<LabTest | null>(null)
+  const [form, setForm] = useState({ visit_id: '', test_name: '', ordered_by: '', notes: '' })
 
   useEffect(() => {
-    loadData()
+    // Always load staff so user can create tests, but defer lab test data until a date is chosen
     loadStaff()
-    // if a specific visitId is provided, load that visit's tests
+    if (visitId) {
+      // If a specific visit context is provided, still load its tests immediately
+      loadData()
+    }
   }, [visitId])
 
   const loadStaff = async () => {
     try {
       const staffList = await get<any[]>('/staff?limit=100').catch(() => [])
-      // Filter to only show valid staff with names and filter out test/duplicate entries
       const validStaff = staffList.filter(s => {
         const firstName = s.first_name || s.First_Name || ''
         const lastName = s.last_name || s.Last_Name || ''
         const name = `${firstName} ${lastName}`.trim()
-        // Filter out entries without proper names or test entries
         return name && 
                name !== 'test' && 
                !name.toLowerCase().includes('deactivate') &&
@@ -45,115 +49,128 @@ export default function LaboratoryLog({ visitId }: { visitId?: number }) {
     }
   }
 
-  const enrichVisitsWithPatients = async (visits: any[]) => {
+  const enrichLabTestsWithPatients = async (tests: any[]) => {
     const enriched = await Promise.all(
-      visits.map(async (v) => {
-        const visitId = v.visit_id || v.Visit_Id || v._id
-        const patientId = v.patient_id || v.Patient_Id
-        if (patientId) {
+      tests.map(async (test) => {
+        const visitId = test.visit_id || test.Visit_Id
+        if (visitId) {
           try {
-            const patient = await get<any>(`/patients/${patientId}`)
-            const first = patient.first_name || patient.First_Name || ''
-            const last = patient.last_name || patient.Last_Name || ''
-            const name = `${first} ${last}`.trim()
-            return { 
-              ...v, 
-              patient_name: name || `Patient ${patientId}`,
-              display_name: `Visit ${visitId} - ${name || `Patient ${patientId}`}`
+            // Get visit details which should include patient info
+            const visit = await get<any>(`/visits/${visitId}`)
+            const patientId = visit.patient_id || visit.Patient_Id
+            
+            if (patientId) {
+              try {
+                const patient = await get<any>(`/patients/${patientId}`)
+                const first = patient.first_name || patient.First_Name || ''
+                const last = patient.last_name || patient.Last_Name || ''
+                const name = `${first} ${last}`.trim()
+                return { 
+                  ...test, 
+                  patient_name: name || `Patient ${patientId}`,
+                  patient_id: patientId
+                }
+              } catch {
+                return { ...test, patient_name: `Patient ${patientId}`, patient_id: patientId }
+              }
             }
-          } catch {
-            return { 
-              ...v, 
-              patient_name: `Patient ${patientId}`,
-              display_name: `Visit ${visitId} - Patient ${patientId}`
-            }
+          } catch (err) {
+            console.error('Failed to get visit for lab test', err)
           }
         }
-        return { 
-          ...v, 
-          patient_name: 'Unknown',
-          display_name: `Visit ${visitId} - Unknown Patient`
-        }
+        return { ...test, patient_name: 'Unknown' }
       })
     )
     return enriched
   }
 
   const loadData = async () => {
+    // If no visit and no date selected yet, do not auto-load records
+    if (!visitId && !selectedDate) {
+      setLabTests([])
+      return
+    }
     setLoading(true)
     setError(null)
     try {
-      // If a date is selected and not viewing a single visit, load by date
       if (!visitId && selectedDate) {
         try {
           const results = await get(`/lab-tests/date/${selectedDate}`)
-          setLabTests(results)
+          const enriched = await enrichLabTestsWithPatients(results)
+          setLabTests(enriched)
           return
         } catch (err) {
-          // If the date endpoint is not available (404) or fails, fall back
-          // to fetching lab tests per recent visits and filter by date.
           console.warn('Date endpoint failed, falling back to per-visit fetch', err)
-          let v = await getActiveVisits()
-          if (!v || v.length === 0) {
-            v = await get<any[]>('/visits?limit=200')
-          }
-
-          const promises = v.map((vis: any) => getLabTestsByVisit(vis.visit_id || vis._id || vis.id).catch(() => []))
-          const results = await Promise.all(promises)
-          const combined: any[] = []
-          results.forEach((arr, idx) => {
-            if (Array.isArray(arr) && arr.length > 0) {
-              const withVisit = arr.map((t: any) => ({ ...t, visit: v[idx] }))
-              combined.push(...withVisit)
-            }
-          })
-
-          // filter by selectedDate using ISO prefix or Date parsing
-          const filtered = combined.filter((t: any) => {
-            const dt = t.ordered_at || t.Ordered_At || t.result_at || t.Result_At
-            if (!dt) return false
-            try {
-              const iso = (typeof dt === 'string') ? dt : new Date(dt).toISOString()
-              return iso.startsWith(selectedDate)
-            } catch (e) {
-              return false
-            }
-          })
-
-          // sort and set (prioritize ordered_at for sorting)
-          filtered.sort((a, b) => {
-            const dateA = a.ordered_at || a.Ordered_At || a.result_at || a.Result_At || 0
-            const dateB = b.ordered_at || b.Ordered_At || b.result_at || b.Result_At || 0
-            return new Date(dateB).getTime() - new Date(dateA).getTime()
-          })
-          setLabTests(filtered)
-          return
         }
       }
 
       if (visitId) {
         const tests = await getLabTestsByVisit(visitId)
-        setLabTests(tests)
+        const enriched = await enrichLabTestsWithPatients(tests)
+        setLabTests(enriched)
         return
       }
 
-      let v = await getActiveVisits()
+      // Load visits for the dropdown (only when loading all tests)
+      let v = await getActiveVisits().catch(() => [])
       if (!v || v.length === 0) {
         v = await get<any[]>('/visits?limit=20')
       }
-      const enriched = await enrichVisitsWithPatients(v)
-      setVisits(enriched)
+      
+      // Enrich visits with patient names
+      const enrichedVisits = await Promise.all(
+        v.map(async (visit) => {
+          const patientId = visit.patient_id || visit.Patient_Id
+          if (patientId) {
+            try {
+              const patient = await get<any>(`/patients/${patientId}`)
+              const first = patient.first_name || patient.First_Name || ''
+              const last = patient.last_name || patient.Last_Name || ''
+              const name = `${first} ${last}`.trim()
+              return { 
+                ...visit, 
+                patient_name: name || `Patient ${patientId}`,
+                display_name: `Visit ${visit.visit_id || visit._id} - ${name || `Patient ${patientId}`}`
+              }
+            } catch {
+              return { 
+                ...visit, 
+                patient_name: `Patient ${patientId}`,
+                display_name: `Visit ${visit.visit_id || visit._id} - Patient ${patientId}`
+              }
+            }
+          }
+          return { 
+            ...visit, 
+            patient_name: 'Unknown',
+            display_name: `Visit ${visit.visit_id || visit._id} - Unknown Patient`
+          }
+        })
+      )
+      
+      setVisits(enrichedVisits)
 
-      const testsPromises = enriched.map((vis: any) => getLabTestsByVisit(vis.visit_id || vis._id || vis.id))
-      const testsArrays = await Promise.allSettled(testsPromises)
+      // Load all lab tests across visits (date not specified)
+      const testsPromises = enrichedVisits.map((vis: any) => 
+        getLabTestsByVisit(vis.visit_id || vis._id || vis.id).catch(() => [])
+      )
+      const testsArrays = await Promise.all(testsPromises)
       const combined: LabTest[] = []
-      testsArrays.forEach((r, idx) => {
-        if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-          const withVisit = r.value.map((t: any) => ({ ...t, visit: enriched[idx] }))
-          combined.push(...withVisit)
+      testsArrays.forEach((tests, idx) => {
+        if (Array.isArray(tests) && tests.length > 0) {
+          const withPatient = tests.map((t: any) => ({
+            ...t,
+            patient_name: enrichedVisits[idx].patient_name,
+            patient_id: enrichedVisits[idx].patient_id || enrichedVisits[idx].Patient_Id
+          }))
+          combined.push(...withPatient)
         }
       })
-      combined.sort((a, b) => new Date(b.ordered_time || b.result_at || 0).getTime() - new Date(a.ordered_time || a.result_at || 0).getTime())
+      combined.sort((a, b) => {
+        const dateA = a.ordered_at || a.Ordered_At || 0
+        const dateB = b.ordered_at || b.Ordered_At || 0
+        return new Date(dateB).getTime() - new Date(dateA).getTime()
+      })
       setLabTests(combined)
     } catch (err) {
       console.error('Failed loading lab log', err)
@@ -163,54 +180,40 @@ export default function LaboratoryLog({ visitId }: { visitId?: number }) {
     }
   }
 
-  const openModal = () => {
-    setForm({ visit_id: visits[0]?.visit_id || visits[0]?._id || '', test_name: '', ordered_by: '' })
+  const openCreateModal = () => {
+    setEditingTest(null)
+    setForm({ 
+      visit_id: visits[0]?.visit_id || visits[0]?._id || '', 
+      test_name: '', 
+      ordered_by: '',
+      notes: ''
+    })
+    setShowModal(true)
+  }
+
+  const openEditModal = (test: LabTest) => {
+    setEditingTest(test)
+    setForm({
+      visit_id: test.visit_id || test.Visit_Id || '',
+      test_name: test.test_name || test.Test_Name || '',
+      ordered_by: test.ordered_by || test.Ordered_By || '',
+      notes: test.notes || test.Notes || ''
+    })
     setShowModal(true)
   }
 
   const loadToday = async () => {
+    const today = getLocalDateString()
+    setSelectedDate(today)
     setLoading(true)
     setError(null)
     try {
-      const today = new Date().toISOString().slice(0, 10)
-      setSelectedDate(today)
-      try {
-        const results = await get(`/lab-tests/date/${today}`)
-        setLabTests(results)
-        return
-      } catch (err) {
-        // fallback to per-visit fetch (same as loadData's fallback)
-        console.warn('Date endpoint failed for today, falling back to per-visit fetch', err)
-        let v = await getActiveVisits()
-        if (!v || v.length === 0) {
-          v = await get<any[]>('/visits?limit=200')
-        }
-
-        const promises = v.map((vis: any) => getLabTestsByVisit(vis.visit_id || vis._id || vis.id).catch(() => []))
-        const results = await Promise.all(promises)
-        const combined: any[] = []
-        results.forEach((arr, idx) => {
-          if (Array.isArray(arr) && arr.length > 0) {
-            const withVisit = arr.map((t: any) => ({ ...t, visit: v[idx] }))
-            combined.push(...withVisit)
-          }
-        })
-
-        const filtered = combined.filter((t: any) => {
-          const dt = t.result_at || t.Result_At || t.ordered_time || t.ordered_at
-          if (!dt) return false
-          try {
-            const iso = (typeof dt === 'string') ? dt : new Date(dt).toISOString()
-            return iso.startsWith(today)
-          } catch (e) {
-            return false
-          }
-        })
-
-        filtered.sort((a, b) => new Date(b.result_at || b.ordered_time || 0).getTime() - new Date(a.result_at || a.ordered_time || 0).getTime())
-        setLabTests(filtered)
-        return
-      }
+      const results = await get(`/lab-tests/date/${today}`)
+      const enriched = await enrichLabTestsWithPatients(results)
+      setLabTests(enriched)
+    } catch (err) {
+      console.error('Failed to load today\'s tests', err)
+      setError('Failed to load today\'s lab tests')
     } finally {
       setLoading(false)
     }
@@ -225,21 +228,59 @@ export default function LaboratoryLog({ visitId }: { visitId?: number }) {
       alert('Please select who ordered the test')
       return
     }
+    
     try {
-      await apiCreateLabTest({ 
-        visit_id: Number(form.visit_id), 
-        test_name: form.test_name, 
-        ordered_by: Number(form.ordered_by)
-      })
+      if (editingTest) {
+        // Update existing test - preserve ordered_at from original
+        const testId = editingTest.labtest_id || editingTest.LabTest_Id
+        const updateData: any = {
+          visit_id: Number(form.visit_id),
+          test_name: form.test_name,
+          ordered_by: Number(form.ordered_by),
+          notes: form.notes
+        }
+        
+        // Preserve ordered_at if it exists
+        if (editingTest.ordered_at || editingTest.Ordered_At) {
+          updateData.ordered_at = editingTest.ordered_at || editingTest.Ordered_At
+        }
+        
+        await updateLabTest(testId, updateData)
+        alert('Lab test updated successfully!')
+      } else {
+        // Create new test
+        await apiCreateLabTest({ 
+          visit_id: Number(form.visit_id), 
+          test_name: form.test_name, 
+          ordered_by: Number(form.ordered_by),
+          notes: form.notes
+        })
+        alert('Lab test created successfully!')
+      }
+      
       setShowModal(false)
-      // Load today's lab tests to show the newly created one
-      const today = new Date().toISOString().slice(0, 10)
-      setSelectedDate(today)
-      await loadToday()
-      alert('Lab test created successfully!')
+      await loadData()
     } catch (err) {
       console.error(err)
-      alert('Failed to create lab test')
+      alert(`Failed to ${editingTest ? 'update' : 'create'} lab test`)
+    }
+  }
+
+  const handleDelete = async (test: LabTest) => {
+    const testId = test.labtest_id || test.LabTest_Id
+    const testName = test.test_name || test.Test_Name
+    
+    if (!confirm(`Are you sure you want to delete lab test "${testName}" (ID: ${testId})?`)) {
+      return
+    }
+    
+    try {
+      await deleteLabTest(testId)
+      alert('Lab test deleted successfully!')
+      await loadData()
+    } catch (err) {
+      console.error(err)
+      alert('Failed to delete lab test')
     }
   }
 
@@ -247,64 +288,97 @@ export default function LaboratoryLog({ visitId }: { visitId?: number }) {
   if (error) return <ErrorMessage message={error} />
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>Laboratory Log</h3>
+    <div className="log-page">
+      <div className="toolbar">
+        <div className="toolbar-left">
+          <h3 style={{ margin: 0 }}>Laboratory Log</h3>
+        </div>
         {!visitId && (
-          <div>
-            <button onClick={openModal}>Add Lab Test</button>
-            <button onClick={loadData} style={{ marginLeft: 8 }}>Refresh</button>
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        {!visitId && (
-          <div>
-            <label>Load lab results for date: </label>
-            <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
-            <button onClick={loadData} style={{ marginLeft: 8 }}>Load</button>
-            <button onClick={loadToday} style={{ marginLeft: 8 }}>Today</button>
+          <div className="toolbar-right">
+            <input 
+              type="date" 
+              className="date" 
+              value={selectedDate} 
+              onChange={(e) => setSelectedDate(e.target.value)} 
+            />
+            <button className="btn" disabled={!selectedDate} onClick={loadData}>Load</button>
+            <button className="btn" onClick={loadToday}>Today</button>
+            <button className="btn btn-primary" onClick={openCreateModal}>Add Lab Test</button>
           </div>
         )}
       </div>
 
       {labTests.length === 0 ? (
-        <p style={{ marginTop: 12 }}>{visitId ? 'No lab tests found for this visit.' : 'No lab tests found for recent visits.'}</p>
+        <p className="muted" style={{ marginTop: 12 }}>
+          {visitId
+            ? 'No lab tests found for this visit.'
+            : selectedDate
+              ? 'No lab tests found for selected date.'
+              : 'Select a date to view lab tests.'}
+        </p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left' }}>Test ID</th>
-            <th style={{ textAlign: 'left' }}>Patient</th>
-            <th style={{ textAlign: 'left' }}>Test</th>
-            <th style={{ textAlign: 'left' }}>Ordered</th>
-            <th style={{ textAlign: 'left' }}>Result</th>
-            <th style={{ textAlign: 'left' }}>Practitioner</th>
-          </tr>
-        </thead>
-        <tbody>
-          {labTests.map((t, i) => (
-            <tr key={t.labtest_id || t._id || t.id || i}>
-              <td>{t.labtest_id || t._id || t.id || 'N/A'}</td>
-              <td>{t.visit?.patient_name || t.visit?.patient?.name || 'Unknown'}</td>
-              <td>{t.test_name}</td>
-              <td>{(t.ordered_at || t.Ordered_At) ? new Date(t.ordered_at || t.Ordered_At).toLocaleString() : '—'}</td>
-              <td>{t.notes || t.result || 'Pending'}</td>
-              <td>{t.ordered_by || t.performed_by || '—'}</td>
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Test ID</th>
+              <th>Patient</th>
+              <th>Test</th>
+              <th>Ordered</th>
+              <th>Notes</th>
+              <th>Ordered By</th>
+              <th>Actions</th>
             </tr>
-          ))}
-        </tbody>
+          </thead>
+          <tbody>
+            {labTests.map((t, i) => {
+              const testId = t.labtest_id || t.LabTest_Id || t._id || t.id
+              const orderedBy = t.ordered_by || t.Ordered_By
+              const staffMember = staff.find(s => 
+                (s.staff_id || s.Staff_Id) === orderedBy
+              )
+              const staffName = staffMember 
+                ? `${staffMember.first_name || staffMember.First_Name || ''} ${staffMember.last_name || staffMember.Last_Name || ''}`.trim()
+                : orderedBy || '—'
+              
+              return (
+                <tr key={testId || i}>
+                  <td>{testId || 'N/A'}</td>
+                  <td>{t.patient_name || 'Unknown'}</td>
+                  <td>{t.test_name || t.Test_Name || 'N/A'}</td>
+                  <td>{formatMST(t.ordered_at || t.Ordered_At)}</td>
+                  <td>{t.notes || t.Notes || '—'}</td>
+                  <td>{staffName}</td>
+                  <td>
+                    <button className="btn" onClick={() => openEditModal(t)} style={{ marginRight: 4 }}>Edit</button>
+                    <button 
+                      className="btn" 
+                      onClick={() => handleDelete(t)}
+                      style={{ background: '#dc3545', color: 'white', borderColor: '#dc3545' }}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
         </table>
       )}
 
       {showModal && (
-        <div style={{ position: 'fixed', left: 0, right: 0, top: 0, bottom: 0, background: 'rgba(0,0,0,0.3)' }}>
-          <div style={{ background: 'white', padding: 16, width: 480, margin: '60px auto', borderRadius: 6 }}>
-            <h4>Add Lab Test</h4>
-            <div style={{ marginBottom: 8 }}>
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>{editingTest ? 'Edit Lab Test' : 'Add Lab Test'}</h3>
+            
+            <div className="form-group">
               <label>Visit:</label>
-              <select value={form.visit_id} onChange={(e) => setForm({ ...form, visit_id: e.target.value })}>
+              <select 
+                className="select"
+                value={form.visit_id} 
+                onChange={(e) => setForm({ ...form, visit_id: e.target.value })}
+                disabled={!!editingTest}
+                style={{ width: '100%' }}
+              >
                 <option value="">Select visit</option>
                 {visits.map((v) => (
                   <option key={v.visit_id || v._id} value={v.visit_id || v._id}>
@@ -313,13 +387,26 @@ export default function LaboratoryLog({ visitId }: { visitId?: number }) {
                 ))}
               </select>
             </div>
-            <div style={{ marginBottom: 8 }}>
+            
+            <div className="form-group">
               <label>Test name:</label>
-              <input value={form.test_name} onChange={(e) => setForm({ ...form, test_name: e.target.value })} placeholder="e.g., Blood Test, X-Ray" />
+              <input 
+                className="input"
+                value={form.test_name} 
+                onChange={(e) => setForm({ ...form, test_name: e.target.value })} 
+                placeholder="e.g., Blood Test, X-Ray, Urinalysis"
+                style={{ width: '100%' }}
+              />
             </div>
-            <div style={{ marginBottom: 8 }}>
+            
+            <div className="form-group">
               <label>Ordered by:</label>
-              <select value={form.ordered_by} onChange={(e) => setForm({ ...form, ordered_by: e.target.value })}>
+              <select 
+                className="select"
+                value={form.ordered_by} 
+                onChange={(e) => setForm({ ...form, ordered_by: e.target.value })}
+                style={{ width: '100%' }}
+              >
                 <option value="">Select practitioner</option>
                 {staff.map((s) => {
                   const staffId = s.staff_id || s.Staff_Id || s._id
@@ -335,9 +422,24 @@ export default function LaboratoryLog({ visitId }: { visitId?: number }) {
                 })}
               </select>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowModal(false)}>Cancel</button>
-              <button onClick={submit} style={{ marginLeft: 8 }}>Create</button>
+            
+            <div className="form-group">
+              <label>Notes/Results:</label>
+              <textarea 
+                className="input"
+                value={form.notes} 
+                onChange={(e) => setForm({ ...form, notes: e.target.value })} 
+                placeholder="Enter test results or notes"
+                rows={3}
+                style={{ width: '100%', fontFamily: 'inherit' }}
+              />
+            </div>
+            
+            <div className="modal-actions">
+              <button className="btn" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={submit}>
+                {editingTest ? 'Update' : 'Create'}
+              </button>
             </div>
           </div>
         </div>

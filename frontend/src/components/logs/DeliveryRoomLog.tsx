@@ -1,23 +1,29 @@
 import React, { useEffect, useState } from 'react'
 import LoadingSpinner from '../common/LoadingSpinner'
 import ErrorMessage from '../common/ErrorMessage'
-import { getDeliveryByVisit, createDelivery } from '../../api/functions'
+import { getDeliveryByVisit, createDelivery, updateDelivery, deleteDelivery } from '../../api/functions'
 import { getActiveVisits } from '../../api/views'
 import { get } from '../../api/client'
+import { getLocalDateString, formatMST, getMSTNow } from '../../utils/timeUtils'
+import './DeliveryRoomLog.css'
 
 export default function DeliveryRoomLog({ visitId }: { visitId?: number }) {
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [visits, setVisits] = useState<any[]>([])
   const [staff, setStaff] = useState<any[]>([])
   const [deliveries, setDeliveries] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({ visit_id: '', practitioner_id: '', notes: '' })
+  const [editingDelivery, setEditingDelivery] = useState<any | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>('')
 
   useEffect(() => {
-    loadData()
     loadStaff()
+    if (visitId) {
+      // If in a visit context, allow immediate loading
+      loadData()
+    }
   }, [visitId])
 
   const loadStaff = async () => {
@@ -42,6 +48,11 @@ export default function DeliveryRoomLog({ visitId }: { visitId?: number }) {
   }
 
   const loadData = async () => {
+    // Defer auto-loading until a date is chosen unless in visit context
+    if (!visitId && !selectedDate) {
+      setDeliveries([])
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -61,7 +72,7 @@ export default function DeliveryRoomLog({ visitId }: { visitId?: number }) {
         }
       }
 
-      // prefer a daily deliveries endpoint when available (today)
+      // prefer a daily deliveries endpoint when available (today) when no explicit date provided
       const todayDeliveries = await get<any[]>('/deliveries/today').catch(() => null)
       if (todayDeliveries && Array.isArray(todayDeliveries) && todayDeliveries.length > 0) {
         // Try to attach visit info to each delivery if possible
@@ -134,7 +145,18 @@ export default function DeliveryRoomLog({ visitId }: { visitId?: number }) {
   }
 
   const openModal = () => {
+    setEditingDelivery(null)
     setForm({ visit_id: visits[0]?.visit_id || visits[0]?._id || '', practitioner_id: '', notes: '' })
+    setShowModal(true)
+  }
+
+  const openEditModal = (entry: any) => {
+    setEditingDelivery(entry)
+    setForm({
+      visit_id: String(entry.visit_id || (entry.visit as any)?.visit_id || (entry.visit as any)?._id || ''),
+      practitioner_id: String(entry.performed_by || entry.practitioner_id || ''),
+      notes: entry.notes || ''
+    })
     setShowModal(true)
   }
 
@@ -167,22 +189,34 @@ export default function DeliveryRoomLog({ visitId }: { visitId?: number }) {
       return
     }
     try {
-      // Backend expects 'performed_by' not 'practitioner_id'
-      await createDelivery({ 
-        visit_id: Number(targetVisit), 
-        performed_by: Number(form.practitioner_id),
-        delivery_date: new Date().toISOString(), 
-        notes: form.notes 
-      })
+      if (editingDelivery) {
+        const deliveryId = editingDelivery.delivery_id || editingDelivery.Delivery_Id || editingDelivery._id
+        const payload: any = {
+          visit_id: Number(targetVisit),
+          performed_by: Number(form.practitioner_id),
+          notes: form.notes
+        }
+        // Preserve existing delivery_date if available
+        if (editingDelivery.delivery_date || editingDelivery.Start_Time) {
+          payload.delivery_date = editingDelivery.delivery_date || editingDelivery.Start_Time
+        }
+        await updateDelivery(deliveryId, payload)
+        alert('Delivery updated successfully!')
+      } else {
+        // Backend expects 'performed_by' not 'practitioner_id'
+        // Do NOT send delivery_date (server will set local time to avoid UTC shift)
+        await createDelivery({ 
+          visit_id: Number(targetVisit), 
+          performed_by: Number(form.practitioner_id),
+          notes: form.notes 
+        })
+        alert('Delivery created successfully!')
+      }
       setShowModal(false)
-      // Load today's deliveries to show the newly created one
-      const today = new Date().toISOString().slice(0, 10)
-      setSelectedDate(today)
-      await loadByDate(today)
-      alert('Delivery created successfully!')
+      await loadData()
     } catch (err) {
       console.error(err)
-      alert('Failed to create delivery')
+      alert(`Failed to ${editingDelivery ? 'update' : 'create'} delivery`)
     }
   }
 
@@ -190,45 +224,78 @@ export default function DeliveryRoomLog({ visitId }: { visitId?: number }) {
   if (error) return <ErrorMessage message={error} />
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2>Daily Delivery Room Log</h2>
+      <div className="log-page">
+        <div className="toolbar">
+          <div className="toolbar-left">
+            <h3 style={{ margin: 0 }}>Daily Delivery Room Log</h3>
+          </div>
         {!visitId && (
-          <div>
-            <button onClick={openModal}>Add Delivery</button>
-            <button onClick={loadData} style={{ marginLeft: 8 }}>Refresh</button>
+            <div className="toolbar-right">
+              <input 
+                type="date" 
+                className="date" 
+                value={selectedDate} 
+                onChange={(e) => setSelectedDate(e.target.value)} 
+              />
+              <button className="btn" disabled={!selectedDate} onClick={() => selectedDate && loadByDate(selectedDate)}>Load</button>
+              <button className="btn" onClick={() => { const today = getLocalDateString(); loadByDate(today); }}>Today</button>
+              <button className="btn btn-primary" onClick={openModal}>Add Delivery</button>
           </div>
         )}
       </div>
-      <div style={{ marginTop: 12 }}>
-        <label>Load deliveries for date: </label>
-        <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
-        <button onClick={() => selectedDate && loadByDate(selectedDate)} style={{ marginLeft: 8 }}>Load</button>
-        <button onClick={() => { const today = new Date().toISOString().slice(0,10); loadByDate(today); }} style={{ marginLeft: 8 }}>Today</button>
-      </div>
+
       {deliveries.length === 0 ? (
-        <p style={{ marginTop: 12 }}>No delivery record found for the selected filters or date.</p>
+          <p className="muted" style={{ marginTop: 12 }}>
+            {visitId
+              ? 'No delivery record found for this visit.'
+              : selectedDate
+                ? 'No delivery records found for selected date.'
+                : 'Select a date to view delivery records.'}
+          </p>
       ) : (
-        <table>
+          <table className="table">
         <thead>
-          <tr>
+           <tr>
             <th>Delivery ID</th>
             <th>Visit</th>
             <th>Patient</th>
             <th>Practitioner</th>
             <th>Date</th>
             <th>Notes</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {deliveries.map((entry, i) => (
-            <tr key={entry.delivery_id || entry._id || i}>
-              <td>{entry.delivery_id ?? entry._id ?? 'N/A'}</td>
-              <td>{(entry.visit as any)?.visit_id || entry.visit_id || (entry.visit as any)?._id || '—'}</td>
-              <td>{(entry.visit as any)?.patient_name || (entry.visit as any)?.patient?.name || entry.patient_id || 'Unknown'}</td>
-              <td>{entry.performed_by || entry.practitioner_id || '—'}</td>
-              <td>{entry.delivery_date ? new Date(entry.delivery_date).toLocaleString() : '—'}</td>
-              <td>{entry.notes || '—'}</td>
+              <tr key={entry.delivery_id || entry._id || i}>
+                  <td>{entry.delivery_id ?? entry._id ?? 'N/A'}</td>
+                  <td>{(entry.visit as any)?.visit_id || entry.visit_id || (entry.visit as any)?._id || '—'}</td>
+                  <td>{(entry.visit as any)?.patient_name || (entry.visit as any)?.patient?.name || entry.patient_id || 'Unknown'}</td>
+                  <td>{entry.performed_by || entry.practitioner_id || '—'}</td>
+                  <td>{formatMST(entry.delivery_date)}</td>
+                  <td>{entry.notes || '—'}</td>
+                  <td>
+                     <button className="btn" onClick={() => openEditModal(entry)} style={{ marginRight: 4 }}>Edit</button>
+                      <button 
+                        className="btn"
+                        onClick={async () => {
+                  const deliveryId = entry.delivery_id || entry.Delivery_Id || entry._id
+                  const confirmDelete = confirm(`Delete delivery ID ${deliveryId}?`)
+                  if (!confirmDelete) return
+                  try {
+                    await deleteDelivery(deliveryId)
+                    alert('Delivery deleted!')
+                    await loadData()
+                  } catch (e) {
+                    console.error(e)
+                    alert('Failed to delete delivery')
+                  }
+                      }} 
+                        style={{ background: '#dc3545', color: 'white', borderColor: '#dc3545' }}
+                      >
+                        Delete
+                      </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -236,13 +303,19 @@ export default function DeliveryRoomLog({ visitId }: { visitId?: number }) {
       )}
 
       {showModal && (
-        <div style={{ position: 'fixed', left: 0, right: 0, top: 0, bottom: 0, background: 'rgba(0,0,0,0.3)' }}>
-          <div style={{ background: 'white', padding: 16, width: 480, margin: '60px auto', borderRadius: 6 }}>
-            <h4>Create Delivery</h4>
+          <div className="modal-overlay">
+            <div className="modal">
+              <h3>{editingDelivery ? 'Edit Delivery' : 'Create Delivery'}</h3>
             {!visitId && (
-              <div style={{ marginBottom: 8 }}>
+                <div className="form-group">
                 <label>Visit:</label>
-                <select value={form.visit_id} onChange={(e) => setForm({ ...form, visit_id: e.target.value })}>
+                  <select 
+                    className="select"
+                    value={form.visit_id} 
+                    onChange={(e) => setForm({ ...form, visit_id: e.target.value })} 
+                    disabled={!!editingDelivery}
+                    style={{ width: '100%' }}
+                  >
                   <option value="">Select visit</option>
                   {visits.map((v) => (
                     <option key={(v as any).visit_id || (v as any)._id} value={(v as any).visit_id || (v as any)._id}>
@@ -252,9 +325,14 @@ export default function DeliveryRoomLog({ visitId }: { visitId?: number }) {
                 </select>
               </div>
             )}
-            <div style={{ marginBottom: 8 }}>
+              <div className="form-group">
               <label>Practitioner:</label>
-              <select value={form.practitioner_id} onChange={(e) => setForm({ ...form, practitioner_id: e.target.value })}>
+                <select 
+                  className="select"
+                  value={form.practitioner_id} 
+                  onChange={(e) => setForm({ ...form, practitioner_id: e.target.value })}
+                  style={{ width: '100%' }}
+                >
                 <option value="">Select practitioner</option>
                 {staff.map((s) => {
                   const staffId = s.staff_id || s.Staff_Id || s._id
@@ -270,13 +348,19 @@ export default function DeliveryRoomLog({ visitId }: { visitId?: number }) {
                 })}
               </select>
             </div>
-            <div style={{ marginBottom: 8 }}>
+              <div className="form-group">
               <label>Notes:</label>
-              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                <textarea 
+                  className="input"
+                  value={form.notes} 
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })} 
+                  rows={3}
+                  style={{ width: '100%', fontFamily: 'inherit' }}
+                />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowModal(false)}>Cancel</button>
-              <button onClick={submit} style={{ marginLeft: 8 }}>Create</button>
+              <div className="modal-actions">
+                <button className="btn" onClick={() => setShowModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={submit}>{editingDelivery ? 'Update' : 'Create'}</button>
             </div>
           </div>
         </div>

@@ -945,6 +945,26 @@ def get_lab_test(labtest_id):
         return jsonify({"error": "Lab test not found"}), 404
     return jsonify(lab_test.model_dump(mode='json'))
 
+@app.route('/lab-tests/<int:labtest_id>', methods=['PUT'])
+def update_lab_test(labtest_id):
+    """Update a lab test order"""
+    try:
+        data = request.get_json()
+        lab_test = LabTestOrderCreate(**data)
+        updated_lab_test = LabTestOrderCRUD.update(labtest_id, lab_test)
+        if not updated_lab_test:
+            return jsonify({"error": "Lab test not found"}), 404
+        return jsonify(updated_lab_test.model_dump(mode='json'))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/lab-tests/<int:labtest_id>', methods=['DELETE'])
+def delete_lab_test(labtest_id):
+    """Delete a lab test order"""
+    if not LabTestOrderCRUD.delete(labtest_id):
+        return jsonify({"error": "Lab test not found"}), 404
+    return '', 204
+
 @app.route('/lab-tests/visit/<int:visit_id>', methods=['GET'])
 def get_lab_tests_by_visit(visit_id):
     """Get all lab tests for a specific visit"""
@@ -993,6 +1013,31 @@ def get_delivery_by_visit(visit_id):
     if not delivery:
         return jsonify({"error": "Delivery not found"}), 404
     return jsonify(delivery.model_dump(mode='json'))
+
+@app.route('/deliveries/<int:delivery_id>', methods=['PUT'])
+def update_delivery(delivery_id):
+    """Update a delivery record"""
+    try:
+        data = request.get_json() or {}
+        updated = DeliveryCRUD.update(delivery_id, data)
+        if not updated:
+            return jsonify({"error": "Delivery not found"}), 404
+        return jsonify(updated.model_dump(mode='json'))
+    except Exception as e:
+        logger.exception('Error updating delivery')
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/deliveries/<int:delivery_id>', methods=['DELETE'])
+def delete_delivery(delivery_id):
+    """Delete a delivery record"""
+    try:
+        ok = DeliveryCRUD.delete(delivery_id)
+        if not ok:
+            return jsonify({"error": "Delivery not found"}), 404
+        return '', 204
+    except Exception as e:
+        logger.exception('Error deleting delivery')
+        return jsonify({"error": str(e)}), 400
 
 
 @app.route('/deliveries/date/<date_str>', methods=['GET'])
@@ -1064,6 +1109,38 @@ def update_recovery_stay(stay_id):
     except Exception as e:
         logger.exception('Error updating recovery stay')
         return jsonify({'error': str(e)}), 400
+
+@app.route('/recovery-stays/date/<date_str>', methods=['GET'])
+def get_recovery_stays_by_date(date_str):
+    """Get recovery stays for a given date (YYYY-MM-DD)."""
+    try:
+        stays = RecoveryStayCRUD.get_by_date(date_str)
+        return jsonify(stays)
+    except Exception as e:
+        logger.exception('Error fetching recovery stays by date')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/recovery-stays/today', methods=['GET'])
+def get_recovery_stays_today():
+    """Convenience endpoint to fetch today's recovery stays."""
+    try:
+        today = date.today().isoformat()
+        stays = RecoveryStayCRUD.get_by_date(today)
+        return jsonify(stays)
+    except Exception as e:
+        logger.exception('Error fetching today recovery stays')
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/recovery-stays/recent', methods=['GET'])
+def get_recovery_stays_recent():
+    """Get most recent recovery stays. Optional query param: limit (default 50)."""
+    try:
+        limit = request.args.get('limit', default=50, type=int)
+        stays = RecoveryStayCRUD.get_recent(limit=limit)
+        return jsonify(stays)
+    except Exception as e:
+        logger.exception('Error fetching recent recovery stays')
+        return jsonify({'error': str(e)}), 500
 
 # ==================== RECOVERY OBSERVATION ROUTES ====================
 @app.route('/recovery-observations', methods=['POST'])

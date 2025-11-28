@@ -1,23 +1,31 @@
 import React, { useEffect, useState } from 'react'
+import './RecoveryRoomLog.css'
 import LoadingSpinner from '../common/LoadingSpinner'
 import ErrorMessage from '../common/ErrorMessage'
 import { getActiveVisits } from '../../api/views'
-import { createRecoveryStay, getRecoveryObservationsByStay, createRecoveryObservation, getRecoveryStay, updateRecoveryStay } from '../../api/functions'
+import { createRecoveryStay, getRecoveryObservationsByStay, createRecoveryObservation, getRecoveryStay, updateRecoveryStay, getRecoveryStaysByDate, getRecoveryStaysRecent } from '../../api/functions'
 import { get } from '../../api/client'
+import { getLocalDateString, formatMST, getMSTLocalNow } from '../../utils/timeUtils'
 
 export default function RecoveryRoomLog({ stayId }: { stayId?: number }) {
   const [loading, setLoading] = useState(true)
   const [visits, setVisits] = useState<any[]>([])
+  const [patients, setPatients] = useState<any[]>([])
+  const [date, setDate] = useState<string>('')
+  const [staysForDate, setStaysForDate] = useState<any[]>([])
   const [currentStay, setCurrentStay] = useState<any | null>(null)
   const [currentPatient, setCurrentPatient] = useState<any | null>(null)
   const [observations, setObservations] = useState<any[]>([])
   const [error, setError] = useState<string | null>(null)
   const [showCreateStay, setShowCreateStay] = useState(false)
-  const [formStay, setFormStay] = useState({ visit_id: '', practitioner_id: '' })
+  const [formStay, setFormStay] = useState({ patient_id: '', practitioner_id: '' })
   const [newObs, setNewObs] = useState('')
+  const [nextStayNumber, setNextStayNumber] = useState<number | null>(null)
+  const [showStayModal, setShowStayModal] = useState(false)
 
   useEffect(() => {
-    loadData()
+    // Load base data (patients/visits) but do not auto-select today's date
+    loadBase()
   }, [])
 
   useEffect(() => {
@@ -26,7 +34,7 @@ export default function RecoveryRoomLog({ stayId }: { stayId?: number }) {
     }
   }, [stayId])
 
-  const loadData = async () => {
+  const loadBase = async () => {
     setLoading(true)
     try {
       let v = await getActiveVisits()
@@ -34,12 +42,61 @@ export default function RecoveryRoomLog({ stayId }: { stayId?: number }) {
         v = await get<any[]>('/visits?limit=20')
       }
       setVisits(v)
+      
+      // Load all patients for the dropdown
+      const allPatients = await get<any[]>('/patients?limit=200').catch(() => [])
+      const validPatients = allPatients.filter(p => {
+        const firstName = p.first_name || p.First_Name || ''
+        const lastName = p.last_name || p.Last_Name || ''
+        return firstName && lastName && (p.patient_id || p.Patient_Id || p._id)
+      })
+      setPatients(validPatients)
+      
+      // compute next stay number hint from recent stays
+      const recent = await getRecoveryStaysRecent(50)
+      const maxId = (recent || []).reduce((m: number, s: any) => Math.max(m, Number(s.stay_id || 0)), 0)
+      setNextStayNumber(maxId ? maxId + 1 : null)
       if (currentStay && currentStay.id) {
         await loadStay(currentStay.id)
       }
     } catch (e) {
       console.error('Recovery load failed', e)
       setError('Failed to load recovery data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const prevOr = (fallback: string, value?: string) => (value && value.length > 0 ? value : fallback)
+
+  const loadStaysByDate = async (dateStr: string) => {
+    try {
+      setLoading(true)
+      // Always use explicit date endpoint to avoid server/client timezone drift
+      const raw = await getRecoveryStaysByDate(dateStr)
+      // Enrich with patient and staff names
+      const enriched = await Promise.all((raw || []).map(async (s: any) => {
+        const out: any = { ...s }
+        try {
+          const p = await get(`/patients/${s.patient_id}`)
+          out.patient_name = p && p.first_name && p.last_name ? `${p.first_name} ${p.last_name}` : `${s.patient_id}`
+        } catch (_) {
+          out.patient_name = `${s.patient_id}`
+        }
+        if (s.discharged_by) {
+          try {
+            const staff = await get(`/staff/${s.discharged_by}`)
+            out.discharged_by_name = staff && staff.first_name && staff.last_name ? `${staff.first_name} ${staff.last_name}` : `${s.discharged_by}`
+          } catch (_) {
+            out.discharged_by_name = `${s.discharged_by}`
+          }
+        }
+        return out
+      }))
+      setStaysForDate(enriched)
+    } catch (e) {
+      console.error('Failed to load stays by date', e)
+      setStaysForDate([])
     } finally {
       setLoading(false)
     }
@@ -77,25 +134,25 @@ export default function RecoveryRoomLog({ stayId }: { stayId?: number }) {
   }
 
   const openCreateStay = () => {
-    // Only default to the first visit if no visit has already been selected
     setFormStay((prev) => ({
-      visit_id: prev.visit_id || visits[0]?.visit_id || visits[0]?._id || '',
+      patient_id: prev.patient_id || '',
       practitioner_id: prev.practitioner_id || ''
     }))
+    // ensure next stay number hint is fresh
+    getRecoveryStaysRecent(50).then((recent) => {
+      const maxId = (recent || []).reduce((m: number, s: any) => Math.max(m, Number(s.stay_id || 0)), 0)
+      setNextStayNumber(maxId ? maxId + 1 : null)
+    }).catch(() => {})
     setShowCreateStay(true)
   }
 
   const submitCreateStay = async () => {
-    if (!formStay.visit_id) return alert('Select a visit')
+    if (!formStay.patient_id) return alert('Please select a patient')
     try {
-      // find patient_id for the selected visit
-      const visit = visits.find((v: any) => (v.visit_id || v._id) === Number(formStay.visit_id))
-      const patient_id = visit?.patient_id || visit?.patient?.patient_id || visit?.patient?._id
-      if (!patient_id) return alert('Selected visit does not have a patient')
-
       const payload: any = {
-        patient_id: Number(patient_id),
-        admit_time: new Date().toISOString(),
+        patient_id: Number(formStay.patient_id),
+        // Use MST timestamp for admission
+        admit_time: getMSTLocalNow(),
       }
       // optional notes
       if ((formStay as any).notes) payload.notes = (formStay as any).notes
@@ -103,6 +160,12 @@ export default function RecoveryRoomLog({ stayId }: { stayId?: number }) {
       const res = await createRecoveryStay(payload)
       const stayId = res.stay_id || res._id || res.id
       if (stayId) await loadStay(Number(stayId))
+      // refresh current date list
+      if (date) await loadStaysByDate(date)
+      // refresh next number
+      const recent2 = await getRecoveryStaysRecent(50)
+      const maxId2 = (recent2 || []).reduce((m: number, s: any) => Math.max(m, Number(s.stay_id || 0)), 0)
+      setNextStayNumber(maxId2 ? maxId2 + 1 : null)
       setShowCreateStay(false)
       alert('Recovery stay created')
     } catch (e) {
@@ -115,7 +178,7 @@ export default function RecoveryRoomLog({ stayId }: { stayId?: number }) {
     if (!currentStay || !currentStay.stay_id) return alert('Select or create a stay first')
     if (!newObs) return alert('Enter observation text')
     try {
-      await createRecoveryObservation({ stay_id: currentStay.stay_id, text_on: new Date().toISOString(), notes: newObs })
+      await createRecoveryObservation({ stay_id: currentStay.stay_id, text_on: getMSTLocalNow(), notes: newObs })
       const obs = await getRecoveryObservationsByStay(currentStay.stay_id)
       setObservations(obs || [])
       setNewObs('')
@@ -131,8 +194,25 @@ export default function RecoveryRoomLog({ stayId }: { stayId?: number }) {
     const practitioner = prompt('Enter practitioner (staff) ID for sign-off')
     if (!practitioner) return
     try {
-      const updated = await updateRecoveryStay(currentStay.stay_id, { discharge_time: new Date().toISOString(), discharged_by: Number(practitioner) })
+      const updated = await updateRecoveryStay(currentStay.stay_id, { discharge_time: getMSTLocalNow(), discharged_by: Number(practitioner) })
       await loadStay(updated.stay_id || currentStay.stay_id)
+      // refresh current date list to reflect discharge
+      if (date) await loadStaysByDate(date)
+      alert('Stay discharged')
+    } catch (err) {
+      console.error(err)
+      alert('Failed to discharge stay')
+    }
+  }
+
+  const dischargeSpecificStay = async (stay: any) => {
+    if (!stay || !stay.stay_id) return alert('No stay selected')
+    const practitioner = prompt('Enter practitioner (staff) ID for sign-off')
+    if (!practitioner) return
+    try {
+      await updateRecoveryStay(stay.stay_id, { discharge_time: getMSTLocalNow(), discharged_by: Number(practitioner) })
+      await loadStay(stay.stay_id)
+      if (date) await loadStaysByDate(date)
       alert('Stay discharged')
     } catch (err) {
       console.error(err)
@@ -144,62 +224,98 @@ export default function RecoveryRoomLog({ stayId }: { stayId?: number }) {
   if (error) return <ErrorMessage message={error} />
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>Recovery Room</h3>
-        <div>
-          <button onClick={openCreateStay}>Create Stay</button>
-          <button onClick={loadData} style={{ marginLeft: 8 }}>Refresh</button>
+    <div className="log-page">
+      <div className="toolbar">
+        <div className="toolbar-left">
+          <h3 style={{ margin: 0 }}>Recovery Room</h3>
+        </div>
+        <div className="toolbar-right">
+          <input className="date" type="date" value={date} onChange={async (e) => { const v = e.target.value; setDate(v); if (v) await loadStaysByDate(v); }} />
+          <button className="btn" onClick={async () => { const t = getLocalDateString(new Date()); setDate(t); await loadStaysByDate(t); }}>Today</button>
+          <button className="btn" onClick={loadBase}>Refresh</button>
+          <button className="btn btn-primary" onClick={openCreateStay}>Create Stay</button>
         </div>
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        <label>Select visit to create a stay:</label>
-        <select value={formStay.visit_id} onChange={(e) => setFormStay({ ...formStay, visit_id: e.target.value })}>
-          <option value="">-- Select a visit --</option>
-          {visits.map((v) => (
-            <option key={(v as any).visit_id || (v as any)._id} value={(v as any).visit_id || (v as any)._id}>
-              {(v as any).patient_name || (v as any).patient?.name || `Visit ${(v as any).visit_id || (v as any)._id}`}
-            </option>
-          ))}
-        </select>
-
-        <div style={{ marginTop: 8 }}>
-          <label>Or load existing stay by ID:</label>
-          <input type="number" placeholder="Stay ID" onBlur={(e) => { const v = Number(e.target.value); if (v) loadStay(v); }} />
-        </div>
-      </div>
-
-      {currentStay && (
-        <div style={{ marginTop: 12 }}>
-          <p><strong>Stay ID:</strong> {currentStay.stay_id}</p>
-          <p><strong>Patient:</strong> {currentPatient ? `${currentPatient.first_name} ${currentPatient.last_name} (ID ${currentPatient.patient_id})` : currentStay.patient_id}</p>
-          <p><strong>Admission:</strong> {currentStay.admit_time}</p>
-          <p><strong>Discharge:</strong> {currentStay.discharge_time || '—'}</p>
-          {currentStay.discharged_by_name ? (
-            <p><strong>Discharged By:</strong> {currentStay.discharged_by_name}</p>
-          ) : currentStay.discharged_by ? (
-            <p><strong>Discharged By (ID):</strong> {currentStay.discharged_by}</p>
-          ) : null}
-          { !currentStay.discharge_time && (
-            <div style={{ marginTop: 8 }}>
-              <button onClick={dischargeStay}>Practitioner Sign-off (Discharge)</button>
-            </div>
-          )}
-
-          <h4>Observations</h4>
-          {observations.length === 0 ? <p>No observations yet.</p> : (
-            <ul>
-              {observations.map((o) => (
-                <li key={o.text_on || o._id}>{o.text_on}: {o.notes}</li>
+      <div className="card" style={{ marginBottom: 12 }}>
+        {(!date) ? (
+          <p className="muted">Select a date to view recovery stays.</p>
+        ) : staysForDate.length === 0 ? (
+          <p className="muted">No recovery stays for selected date.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Stay ID</th>
+                <th>Patient</th>
+                <th>Admit Time</th>
+                <th>Discharge Time</th>
+                <th>Discharged By</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staysForDate.map((s) => (
+                <tr key={s.stay_id}>
+                  <td>{s.stay_id}</td>
+                  <td>{s.patient_name || s.patient_id}</td>
+                  <td>{formatMST(s.admit_time)}</td>
+                  <td>{formatMST(s.discharge_time)}</td>
+                  <td>{s.discharged_by_name || s.discharged_by || '—'}</td>
+                  <td>
+                    <button className="btn" onClick={async () => { await loadStay(s.stay_id); setShowStayModal(true); }}>View</button>
+                    {!s.discharge_time && (
+                      <button className="btn" onClick={() => dischargeSpecificStay(s)} style={{ marginLeft: 6 }}>Discharge</button>
+                    )}
+                  </td>
+                </tr>
               ))}
-            </ul>
-          )}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-          <div style={{ marginTop: 12 }}>
-            <textarea value={newObs} onChange={(e) => setNewObs(e.target.value)} placeholder="Write observation..." rows={3} style={{ width: '100%' }} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-              <button onClick={addObservation}>Add Observation</button>
+      {/* Removed Load Existing Stay dropdown; use the log table actions instead */}
+
+      {showStayModal && currentStay && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)' }}>
+          <div style={{ background: '#fff', width: 640, maxWidth: '92%', margin: '60px auto', borderRadius: 8, padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4 style={{ margin: 0 }}>Recovery Stay #{currentStay.stay_id}</h4>
+              <button className="btn" onClick={() => setShowStayModal(false)}>Close</button>
+            </div>
+            <div className="muted" style={{ marginTop: 4, marginBottom: 8 }}>
+              Patient: {currentPatient ? `${currentPatient.first_name} ${currentPatient.last_name} (ID ${currentPatient.patient_id})` : currentStay.patient_id}
+            </div>
+            <div className="card" style={{ border: 'none', padding: 0 }}>
+              <p><strong>Admission:</strong> {formatMST(currentStay.admit_time)}</p>
+              <p><strong>Discharge:</strong> {formatMST(currentStay.discharge_time)}</p>
+              {currentStay.discharged_by_name ? (
+                <p><strong>Discharged By:</strong> {currentStay.discharged_by_name}</p>
+              ) : currentStay.discharged_by ? (
+                <p><strong>Discharged By (ID):</strong> {currentStay.discharged_by}</p>
+              ) : null}
+              {!currentStay.discharge_time && (
+                <div style={{ marginTop: 8 }}>
+                  <button className="btn btn-primary" onClick={async () => { await dischargeStay(); setShowStayModal(false); }}>Practitioner Sign-off (Discharge)</button>
+                </div>
+              )}
+            </div>
+
+            <h4 className="section-title">Observations</h4>
+            {observations.length === 0 ? <p className="muted">No observations yet.</p> : (
+              <ul>
+                {observations.map((o) => (
+                  <li key={o.text_on || o._id}><strong>{formatMST(o.text_on)}:</strong> {o.notes}</li>
+                ))}
+              </ul>
+            )}
+
+            <div style={{ marginTop: 12 }}>
+              <textarea className="input" value={newObs} onChange={(e) => setNewObs(e.target.value)} placeholder="Write observation..." rows={3} style={{ width: '100%' }} />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                <button className="btn" onClick={addObservation}>Add Observation</button>
+              </div>
             </div>
           </div>
         </div>
@@ -209,30 +325,38 @@ export default function RecoveryRoomLog({ stayId }: { stayId?: number }) {
         <div style={{ position: 'fixed', left: 0, right: 0, top: 0, bottom: 0, background: 'rgba(0,0,0,0.3)' }}>
           <div style={{ background: 'white', padding: 16, width: 480, margin: '60px auto', borderRadius: 6 }}>
             <h4>Create Recovery Stay</h4>
-            <div style={{ marginBottom: 8 }}>
-              <label>Visit:</label>
-              {/* If a visit is already selected in the main form, show it read-only inside the modal. */}
-              {formStay.visit_id ? (
-                <div style={{ padding: 8, background: '#f6f6f6', borderRadius: 4 }}>
-                  {(() => {
-                    const v = visits.find((x: any) => (x.visit_id || x._id) === Number(formStay.visit_id));
-                    return v ? ((v.patient_name || v.patient?.name) ? `${v.patient_name || v.patient?.name} (Visit ${v.visit_id || v._id})` : `Visit ${v.visit_id || v._id}`) : `Visit ${formStay.visit_id}`;
-                  })()}
-                </div>
-              ) : (
-                <select value={formStay.visit_id} onChange={(e) => setFormStay({ ...formStay, visit_id: e.target.value })}>
-                  <option value="">Select visit</option>
-                  {visits.map((v) => (
-                    <option key={(v as any).visit_id || (v as any)._id} value={(v as any).visit_id || (v as any)._id}>
-                      {(v as any).patient_name || (v as any).patient?.name || `Visit ${(v as any).visit_id || (v as any)._id}`}
+            {nextStayNumber && (
+              <div className="muted" style={{ marginBottom: 12 }}>Next Stay #: {nextStayNumber}</div>
+            )}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Patient:</label>
+              <select 
+                className="select" 
+                value={formStay.patient_id} 
+                onChange={(e) => setFormStay({ ...formStay, patient_id: e.target.value })}
+                style={{ width: '100%', padding: 8 }}
+              >
+                <option value="">-- Select a patient --</option>
+                {patients.map((p) => {
+                  const patientId = p.patient_id || p.Patient_Id || p._id
+                  const firstName = p.first_name || p.First_Name || ''
+                  const lastName = p.last_name || p.Last_Name || ''
+                  return (
+                    <option key={patientId} value={patientId}>
+                      {firstName} {lastName} (ID: {patientId})
                     </option>
-                  ))}
-                </select>
-              )}
+                  )
+                })}
+              </select>
             </div>
             <div style={{ marginBottom: 8 }}>
-              <label>Practitioner ID:</label>
-              <input value={formStay.practitioner_id} onChange={(e) => setFormStay({ ...formStay, practitioner_id: e.target.value })} />
+              <label style={{ display: 'block', marginBottom: 4 }}>Practitioner ID:</label>
+              <input 
+                className="input" 
+                value={formStay.practitioner_id} 
+                onChange={(e) => setFormStay({ ...formStay, practitioner_id: e.target.value })} 
+                style={{ width: '100%', padding: 8 }}
+              />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowCreateStay(false)}>Cancel</button>
