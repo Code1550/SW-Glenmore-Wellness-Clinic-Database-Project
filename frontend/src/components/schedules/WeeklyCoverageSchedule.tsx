@@ -31,15 +31,18 @@ export default function WeeklySchedule() {
     // Set to the start of current week (Monday)
     const today = new Date()
     const monday = getMonday(today)
-    setSelectedWeekStart(monday.toISOString().slice(0, 10))
+    const yyyy = monday.getFullYear()
+    const mm = String(monday.getMonth() + 1).padStart(2, '0')
+    const dd = String(monday.getDate()).padStart(2, '0')
+    setSelectedWeekStart(`${yyyy}-${mm}-${dd}`)
     loadStaffList()
   }, [])
 
   useEffect(() => {
-    if (selectedWeekStart) {
+    if (selectedWeekStart && staffList.length > 0) {
       loadWeekSchedule()
     }
-  }, [selectedWeekStart])
+  }, [selectedWeekStart, staffList])
 
   const getMonday = (date: Date): Date => {
     const d = new Date(date)
@@ -50,11 +53,14 @@ export default function WeeklySchedule() {
 
   const getWeekDates = (startDate: string): string[] => {
     const dates: string[] = []
-    const start = new Date(startDate)
+    const [year, month, day] = startDate.split('-').map(Number)
+    
     for (let i = 0; i < 7; i++) {
-      const date = new Date(start)
-      date.setDate(start.getDate() + i)
-      dates.push(date.toISOString().slice(0, 10))
+      const date = new Date(year, month - 1, day + i)
+      const yyyy = date.getFullYear()
+      const mm = String(date.getMonth() + 1).padStart(2, '0')
+      const dd = String(date.getDate()).padStart(2, '0')
+      dates.push(`${yyyy}-${mm}-${dd}`)
     }
     return dates
   }
@@ -118,21 +124,32 @@ export default function WeeklySchedule() {
   }
 
   const handlePreviousWeek = () => {
-    const currentStart = new Date(selectedWeekStart)
+    const [year, month, day] = selectedWeekStart.split('-').map(Number)
+    const currentStart = new Date(year, month - 1, day)
     currentStart.setDate(currentStart.getDate() - 7)
-    setSelectedWeekStart(currentStart.toISOString().slice(0, 10))
+    const yyyy = currentStart.getFullYear()
+    const mm = String(currentStart.getMonth() + 1).padStart(2, '0')
+    const dd = String(currentStart.getDate()).padStart(2, '0')
+    setSelectedWeekStart(`${yyyy}-${mm}-${dd}`)
   }
 
   const handleNextWeek = () => {
-    const currentStart = new Date(selectedWeekStart)
+    const [year, month, day] = selectedWeekStart.split('-').map(Number)
+    const currentStart = new Date(year, month - 1, day)
     currentStart.setDate(currentStart.getDate() + 7)
-    setSelectedWeekStart(currentStart.toISOString().slice(0, 10))
+    const yyyy = currentStart.getFullYear()
+    const mm = String(currentStart.getMonth() + 1).padStart(2, '0')
+    const dd = String(currentStart.getDate()).padStart(2, '0')
+    setSelectedWeekStart(`${yyyy}-${mm}-${dd}`)
   }
 
   const handleThisWeek = () => {
     const today = new Date()
     const monday = getMonday(today)
-    setSelectedWeekStart(monday.toISOString().slice(0, 10))
+    const yyyy = monday.getFullYear()
+    const mm = String(monday.getMonth() + 1).padStart(2, '0')
+    const dd = String(monday.getDate()).padStart(2, '0')
+    setSelectedWeekStart(`${yyyy}-${mm}-${dd}`)
   }
 
   const openModal = (date?: string) => {
@@ -154,22 +171,31 @@ export default function WeeklySchedule() {
     }
 
     try {
+      // Create local datetime and convert to UTC for backend
+      const startLocal = new Date(`${form.shift_date}T${form.start_time}:00`)
+      const endLocal = new Date(`${form.shift_date}T${form.end_time}:00`)
+      
+      // Convert to ISO string (UTC) for backend
+      const startDateTime = startLocal.toISOString()
+      const endDateTime = endLocal.toISOString()
+
       const shiftData = {
         staff_id: Number(form.staff_id),
-        shift_date: form.shift_date,
-        start_time: form.start_time,
-        end_time: form.end_time,
-        role: form.role || undefined,
-        notes: form.notes || undefined
+        date: form.shift_date,
+        start_time: startDateTime,
+        end_time: endDateTime,
+        role_for_shift: form.role || '',
+        notes: form.notes || ''
       }
 
       await post('/schedules/shifts', shiftData)
       setShowModal(false)
       await loadWeekSchedule()
       alert('Shift added successfully')
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create shift', err)
-      alert('Failed to create shift')
+      const errorMsg = err?.response?.data?.error || err?.message || 'Failed to create shift'
+      alert(errorMsg)
     }
   }
 
@@ -184,24 +210,31 @@ export default function WeeklySchedule() {
   const formatTime = (time: string) => {
     if (!time) return '—'
     if (time.includes('T')) {
-      return new Date(time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      return new Date(time).toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false
+      })
     }
     return time
   }
 
   const getDayName = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', { weekday: 'short' })
+    const [year, month, day] = date.split('-').map(Number)
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', { weekday: 'short' })
   }
 
   const getDateDisplay = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const [year, month, day] = date.split('-').map(Number)
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
   const isToday = (date: string) => {
-    const today = new Date().toLocaleDateString('en-CA', {
-      timeZone: 'America/Edmonton' 
-    });
-    return date === today
+    const today = new Date()
+    const yyyy = today.getFullYear()
+    const mm = String(today.getMonth() + 1).padStart(2, '0')
+    const dd = String(today.getDate()).padStart(2, '0')
+    return date === `${yyyy}-${mm}-${dd}`
   }
 
   const getTotalShiftsForDay = (date: string) => {
@@ -244,9 +277,7 @@ export default function WeeklySchedule() {
       <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '12px', alignItems: 'center', background: '#f5f5f5', padding: '12px', borderRadius: 6, flexWrap: 'wrap' }}>
         <button onClick={handlePreviousWeek}>← Previous Week</button>
         <div style={{ fontWeight: 'bold', fontSize: '1.1rem', flex: 1, textAlign: 'center' }}>
-          {new Date(selectedWeekStart).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-          {' - '}
-          {new Date(weekEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          {getDateDisplay(selectedWeekStart)} - {getDateDisplay(weekEnd)}
         </div>
         <button onClick={handleThisWeek}>This Week</button>
         <button onClick={handleNextWeek}>Next Week →</button>
