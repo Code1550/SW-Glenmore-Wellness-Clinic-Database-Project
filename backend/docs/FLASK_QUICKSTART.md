@@ -1,10 +1,10 @@
-# 🚀 Flask Backend - Quick Start Guide
+# Flask Backend - Quick Start Guide
 
-## ✅ Your Flask-Based Backend is Ready!
+## Your Flask-Based Backend is Ready!
 
 I've converted the entire backend from FastAPI to **Flask** as requested.
 
-## 📁 What Changed
+## What Changed
 
 ### New Files:
 - **`app.py`** - Complete Flask application (replaces main.py)
@@ -14,7 +14,7 @@ I've converted the entire backend from FastAPI to **Flask** as requested.
 ### Removed:
 - `main.py` (FastAPI version - no longer needed)
 
-## 🎯 Quick Setup (3 Steps)
+## Quick Setup (3 Steps)
 
 ### Step 1: Install Flask Dependencies
 
@@ -55,7 +55,7 @@ Or with Flask CLI:
 flask --app app run --debug --host=0.0.0.0 --port=8000
 ```
 
-## ✅ What You Should See
+## What You Should See
 
 ```
  * Serving Flask app 'app'
@@ -65,13 +65,13 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://127.0.0.1:8000
 ```
 
-## 🔗 Access Your API
+## Access Your API
 
 - **Base URL**: http://127.0.0.1:8000
 - **Health Check**: http://127.0.0.1:8000/health
 - **Root**: http://127.0.0.1:8000/
 
-## 🧪 Testing Your Flask API
+## Testing Your Flask API
 
 ### Method 1: Browser
 Open: http://127.0.0.1:8000/health
@@ -117,7 +117,7 @@ Import the `Wellness_Clinic_API.postman_collection.json` file.
 
 **Note:** Change the base URL in Postman to `http://127.0.0.1:8000`
 
-## 📊 API Endpoints (All 60+ Endpoints Work!)
+## API Endpoints (All 60+ Endpoints Work!)
 
 ### Patients
 - `POST /patients` - Create patient
@@ -132,7 +132,7 @@ Import the `Wellness_Clinic_API.postman_collection.json` file.
 - `GET /staff` - List staff
 - `GET /staff/<id>` - Get staff
 - `PUT /staff/<id>` - Update staff
-- `DELETE /staff/<id>` - Delete staff ⭐
+- `DELETE /staff/<id>` - Delete staff
 - `PUT /staff/<id>/deactivate` - Deactivate staff
 
 ### Appointments
@@ -146,7 +146,7 @@ Import the `Wellness_Clinic_API.postman_collection.json` file.
 
 ...and 40+ more endpoints for visits, diagnoses, procedures, drugs, prescriptions, lab tests, deliveries, recovery, invoices, and payments!
 
-## 🆚 Flask vs FastAPI Differences
+## Flask vs FastAPI Differences
 
 ### Starting the Server
 
@@ -185,7 +185,7 @@ uvicorn main:app --reload
 - Type hints for validation
 - Uses `@app.get()`, `@app.post()`, etc.
 
-## 💡 Example: Delete Staff Member
+## Example: Delete Staff Member
 
 ```bash
 # Delete staff with ID 1
@@ -199,7 +199,7 @@ curl -X DELETE http://127.0.0.1:8000/staff/1
 }
 ```
 
-## 🔧 Flask Development Tips
+## Flask Development Tips
 
 ### Enable Debug Mode (Auto-reload)
 
@@ -231,7 +231,7 @@ from app import app
 print(app.url_map)
 ```
 
-## 📦 Dependencies Installed
+## Dependencies Installed
 
 ```
 Flask==3.0.0          # Web framework
@@ -243,7 +243,7 @@ email-validator==2.1.0 # Email validation
 dnspython==2.4.2      # DNS for MongoDB
 ```
 
-## ⚠️ Important Notes
+## Important Notes
 
 1. **app.py replaces main.py** - Use `app.py` for Flask
 2. **No Swagger docs** - Use Postman or curl for testing
@@ -251,7 +251,7 @@ dnspython==2.4.2      # DNS for MongoDB
 4. **Same database** - Uses same MongoDB collections
 5. **Same CRUD files** - No changes needed to CRUD operations
 
-## 🚀 Production Deployment
+## Production Deployment
 
 For production, use a WSGI server like Gunicorn:
 
@@ -262,7 +262,7 @@ pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:8000 app:app
 ```
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Issue: "Module not found"
 ```bash
@@ -281,23 +281,23 @@ app.run(debug=True, host='0.0.0.0', port=8001)
 ### Issue: "CORS errors"
 Flask-CORS is already configured to allow all origins. If still having issues, check browser console.
 
-## 📚 Next Steps
+## Next Steps
 
-1. ✅ Test all endpoints with curl or Postman
-2. ✅ Build your frontend
-3. ✅ Deploy to production with Gunicorn
-4. 🎨 Optional: Add Flask-RESTX for API docs
+1. [✓] Test all endpoints with curl or Postman
+2. [✓] Build your frontend
+3. [✓] Deploy to production with Gunicorn
+4. [Optional] Add Flask-RESTX for API docs
 
-## 🎉 You're All Set!
+## You're All Set!
 
 Your Flask backend is running with:
-- ✅ All 60+ API endpoints
-- ✅ MongoDB Atlas connection
-- ✅ CORS enabled
-- ✅ All 23 collections supported
-- ✅ No authentication (as requested)
+- [✓] All 60+ API endpoints
+- [✓] MongoDB Atlas connection
+- [✓] CORS enabled
+- [✓] All 23 collections supported
+- [✓] No authentication (as requested)
 
-**Start testing your API now!** 🚀
+**Start testing your API now!**
 
 ---
 

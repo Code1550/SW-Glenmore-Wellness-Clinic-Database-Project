@@ -1,4 +1,4 @@
-# 🚀 QUICK FIX - Start Here!
+# QUICK FIX - Start Here!
 
 ## Your Exact Solution
 
@@ -30,7 +30,7 @@ MONGODB_DB_NAME=GlenmoreWellnessDB
 uvicorn main:app --reload
 ```
 
-## ✅ Success!
+## [✓] Success!
 
 You should see:
 ```
@@ -39,17 +39,17 @@ INFO:     Uvicorn running on http://127.0.0.1:8000
 INFO:     Application startup complete.
 ```
 
-## 🎯 Test Your API
+## Test Your API
 
 Visit: **http://127.0.0.1:8000/docs**
 
 ## What Was Fixed?
 
-1. ✅ Updated `database.py` to support both `MONGODB_URL` and `MONGODB_URI`
-2. ✅ Your `.env` uses `MONGODB_URI` - now fully supported
-3. ✅ Connected to your actual MongoDB Atlas cluster: `GlenmoreWellnessDB`
+1. [✓] Updated `database.py` to support both `MONGODB_URL` and `MONGODB_URI`
+2. [✓] Your `.env` uses `MONGODB_URI` - now fully supported
+3. [✓] Connected to your actual MongoDB Atlas cluster: `GlenmoreWellnessDB`
 
-## 📚 Next Steps
+## Next Steps
 
 1. View API docs: http://127.0.0.1:8000/docs
 2. Test endpoints with Swagger UI
@@ -57,4 +57,4 @@ Visit: **http://127.0.0.1:8000/docs**
 
 ---
 
-**That's it! Your backend is ready to use.** 🎉
+**That's it! Your backend is ready to use.**

@@ -1,4 +1,4 @@
-# 🔧 Troubleshooting Guide
+# Troubleshooting Guide
 
 ## Error: "Connection refused to localhost:27017"
 

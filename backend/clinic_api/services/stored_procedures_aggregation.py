@@ -703,9 +703,9 @@ if __name__ == "__main__":
                 print(f"✗ {func_name}: FAILED - {result.get('error')}")
         
         print("\n" + "=" * 60)
-        print("✅ Aggregation Functions Ready!")
+        print("[✓] Aggregation Functions Ready!")
         print("=" * 60)
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[!] Error: {e}")
         sys.exit(1)

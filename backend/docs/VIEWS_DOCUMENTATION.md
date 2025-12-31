@@ -1,4 +1,4 @@
-# 📊 5 NEW MongoDB Views - Complete Documentation
+# 5 NEW MongoDB Views - Complete Documentation
 
 ## Overview
 
@@ -6,7 +6,7 @@ I've created 5 brand new MongoDB views based on your actual data structure. Thes
 
 ---
 
-## 🎯 The 5 New Views
+## The 5 New Views
 
 ### 1. **visit_complete_details** 
 **Clinical Dashboard View**
@@ -206,7 +206,7 @@ I've created 5 brand new MongoDB views based on your actual data structure. Thes
     "appointment_type": "Scheduled",  // or "Walk-in"
     
     // Calendar display
-    "title": "📅 John Doe",  // 🚶 for walk-ins
+    "title": "[Calendar] John Doe",  // [Walk-in] for walk-ins
     "color": "#4285f4",  // Orange (#ff9f40) for walk-ins
     
     // Time analysis
@@ -282,7 +282,7 @@ I've created 5 brand new MongoDB views based on your actual data structure. Thes
 
 ---
 
-## 📋 View Comparison Table
+## View Comparison Table
 
 | View | Base Collection | Joins | Key Metrics | Primary Use Case |
 |------|----------------|-------|-------------|------------------|
@@ -294,7 +294,7 @@ I've created 5 brand new MongoDB views based on your actual data structure. Thes
 
 ---
 
-## 🔧 Installation & Usage
+## Installation & Usage
 
 ### Step 1: Replace Your Views.py
 
@@ -343,7 +343,7 @@ history = list(db.patient_clinical_history.find())
 
 ---
 
-## 🌐 API Endpoints
+## API Endpoints
 
 ### Add these to your app.py:
 
@@ -381,7 +381,7 @@ def get_patient_history():
 
 ---
 
-## 🎯 Business Value
+## Business Value
 
 ### For Clinical Staff:
 - **visit_complete_details**: Real-time view of all visits with prescriptions and lab tests
@@ -402,7 +402,7 @@ def get_patient_history():
 
 ---
 
-## 📊 Sample Queries
+## Sample Queries
 
 ### Get all active visits
 ```python
@@ -440,7 +440,7 @@ db.patient_clinical_history.find({"needs_follow_up": True})
 
 ---
 
-## ✅ Benefits Over Old Views
+## Benefits Over Old Views
 
 1. **Based on Actual Data**: Uses your real collection names and structures
 2. **More Business Value**: Each view serves a specific business purpose
@@ -450,7 +450,7 @@ db.patient_clinical_history.find({"needs_follow_up": True})
 
 ---
 
-## 🔄 Migration Guide
+## Migration Guide
 
 ### Old Views → New Views Mapping:
 
@@ -464,7 +464,7 @@ db.patient_clinical_history.find({"needs_follow_up": True})
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Test that views were created
@@ -479,7 +479,7 @@ python -c "from clinic_api.database import Database; db = Database.connect_db();
 
 ---
 
-## 📚 Next Steps
+## Next Steps
 
 1. **Replace Views.py** with the new file
 2. **Create the views** using `recreate_all_views()`
@@ -489,14 +489,14 @@ python -c "from clinic_api.database import Database; db = Database.connect_db();
 
 ---
 
-## 💡 Key Takeaways
+## Key Takeaways
 
 - Views are **pre-calculated** and **fast**
 - They update **automatically** when source collections change
 - Perfect for **dashboards** and **reports**
 - Much **faster** than running complex queries every time
-- **MongoDB Atlas compatible** ✅
+- **MongoDB Atlas compatible** [✓]
 
 ---
 
-Ready to use! 🚀
+Ready to use!

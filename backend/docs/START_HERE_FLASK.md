@@ -1,10 +1,10 @@
-# 🚀 SW Glenmore Wellness Clinic - Flask Backend
+# SW Glenmore Wellness Clinic - Flask Backend
 
-## ✅ Complete Backend Package
+## [✓] Complete Backend Package
 
 This is your **complete Flask backend** for the SW Glenmore Wellness Clinic project.
 
-## 📦 What's Included: 23 Files
+## What's Included: 23 Files
 
 ### Core Application (10 files)
 - `app.py` - Flask application with 60+ API endpoints
@@ -38,7 +38,7 @@ This is your **complete Flask backend** for the SW Glenmore Wellness Clinic proj
 ### Testing (1 file)
 - `Wellness_Clinic_API.postman_collection.json` - Postman collection
 
-## 🎯 Quick Setup (4 Steps)
+## Quick Setup (4 Steps)
 
 ### Step 1: Install Dependencies
 ```bash
@@ -69,11 +69,11 @@ You should see:
 }
 ```
 
-## ✅ Success!
+## [✓] Success!
 
 If you see the above, your backend is running! 
 
-## 📊 What You Can Do Now
+## What You Can Do Now
 
 ### View All Patients
 ```bash
@@ -103,7 +103,7 @@ curl -X DELETE http://127.0.0.1:8000/staff/1
 curl http://127.0.0.1:8000/staff
 ```
 
-## 📚 Available Endpoints (60+)
+## Available Endpoints (60+)
 
 ### Patients
 - `POST /patients` - Create
@@ -118,7 +118,7 @@ curl http://127.0.0.1:8000/staff
 - `GET /staff` - List all
 - `GET /staff/<id>` - Get one
 - `PUT /staff/<id>` - Update
-- `DELETE /staff/<id>` - Delete ⭐
+- `DELETE /staff/<id>` - Delete
 - `PUT /staff/<id>/deactivate` - Deactivate
 
 ### Appointments
@@ -203,7 +203,7 @@ curl http://127.0.0.1:8000/staff
 - `GET /payments/patient/<id>` - By patient
 - `GET /payments/invoice/<id>` - By invoice
 
-## 🧪 Testing Options
+## Testing Options
 
 ### 1. Automated Test Script
 ```bash
@@ -219,7 +219,7 @@ Use the examples above
 ### 4. Browser
 Visit: http://127.0.0.1:8000/health
 
-## 📖 Documentation Files
+## Documentation Files
 
 - **FLASK_QUICKSTART.md** - Detailed setup guide
 - **QUICK_FIX.md** - MongoDB connection solution
@@ -227,7 +227,7 @@ Visit: http://127.0.0.1:8000/health
 - **README.md** - Complete API documentation
 - **YOUR_ENV_FILE.md** - Your specific MongoDB config
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 wellness-clinic-backend/
@@ -242,7 +242,7 @@ wellness-clinic-backend/
 └── Documentation/            # All .md files
 ```
 
-## 🔧 Technology Stack
+## Technology Stack
 
 - **Flask 3.0.0** - Web framework
 - **Flask-CORS 4.0.0** - CORS support
@@ -250,19 +250,19 @@ wellness-clinic-backend/
 - **Pydantic 2.5.0** - Data validation
 - **Python 3.8+** - Programming language
 
-## 🌟 Key Features
+## Key Features
 
-✅ 60+ RESTful API endpoints
-✅ Complete CRUD operations
-✅ MongoDB Atlas integration
-✅ Auto-incrementing IDs
-✅ Data validation with Pydantic
-✅ CORS enabled
-✅ Error handling
-✅ No authentication (as requested)
-✅ All 23 MongoDB collections supported
+[✓] 60+ RESTful API endpoints
+[✓] Complete CRUD operations
+[✓] MongoDB Atlas integration
+[✓] Auto-incrementing IDs
+[✓] Data validation with Pydantic
+[✓] CORS enabled
+[✓] Error handling
+[✓] No authentication (as requested)
+[✓] All 23 MongoDB collections supported
 
-## 🚀 Production Deployment
+## Production Deployment
 
 For production, use Gunicorn:
 
@@ -271,7 +271,7 @@ pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:8000 app:app
 ```
 
-## ⚠️ Important Notes
+## Important Notes
 
 1. **Create .env file** - Required for MongoDB connection
 2. **Install dependencies** - Run `pip install -r requirements.txt`
@@ -279,14 +279,14 @@ gunicorn -w 4 -b 0.0.0.0:8000 app:app
 4. **MongoDB Atlas** - IP must be whitelisted
 5. **Port 8000** - Default port (configurable in app.py)
 
-## 🆘 Need Help?
+## Need Help?
 
 1. **Setup issues?** → See FLASK_QUICKSTART.md
 2. **Connection errors?** → See QUICK_FIX.md
 3. **General troubleshooting?** → See TROUBLESHOOTING.md
 4. **API details?** → See README.md
 
-## 📝 Quick Command Reference
+## Quick Command Reference
 
 ```bash
 # Install dependencies
@@ -305,8 +305,8 @@ curl http://127.0.0.1:8000/health
 python test_api.py
 ```
 
-## 🎉 You're Ready!
+## You're Ready!
 
 Your complete Flask backend is ready to use. Start with creating the `.env` file, then run `python app.py`.
 
-**Happy coding!** 🚀
+**Happy coding!**

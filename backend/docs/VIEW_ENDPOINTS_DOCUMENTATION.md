@@ -1,4 +1,4 @@
-# 🌐 MongoDB Views API Endpoints Documentation
+# MongoDB Views API Endpoints Documentation
 
 ## Overview
 
@@ -6,7 +6,7 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 1. [Visit Complete Details](#1-visit-complete-details)
 2. [Patient Financial Summary](#2-patient-financial-summary)
@@ -347,7 +347,7 @@ curl "http://localhost:8000/api/views/clinic-schedule?start_time=2025-11-25T09:0
             "is_walkin": false,
             "appointment_type": "Scheduled",
             "created_at": "2025-11-17T23:29:38.340314",
-            "title": "📅 John Doe",
+            "title": "[Calendar] John Doe",
             "color": "#4285f4",
             "day_of_week": 4,
             "hour_of_day": 10
@@ -541,7 +541,7 @@ curl http://localhost:8000/api/views/summary
 
 ---
 
-## 🔧 Installation
+## Installation
 
 ### Step 1: Copy endpoints to app.py
 
@@ -572,7 +572,7 @@ curl http://localhost:8000/api/views/summary
 
 ---
 
-## 📊 Common Query Patterns
+## Common Query Patterns
 
 ### Get Active Items
 ```bash
@@ -624,7 +624,7 @@ curl http://localhost:8000/api/views/clinic-schedule?staff_id=48
 
 ---
 
-## ⚡ Performance Tips
+## Performance Tips
 
 1. **Use Filters**: Always filter data when possible to reduce response size
 2. **Use Limits**: Set appropriate limits for large datasets
@@ -634,7 +634,7 @@ curl http://localhost:8000/api/views/clinic-schedule?staff_id=48
 
 ---
 
-## 🔐 Security Considerations
+## Security Considerations
 
 1. **Add Authentication**: Protect endpoints with authentication middleware
 2. **Add Authorization**: Implement role-based access control
@@ -644,7 +644,7 @@ curl http://localhost:8000/api/views/clinic-schedule?staff_id=48
 
 ---
 
-## 🧪 Testing with Postman/curl
+## Testing with Postman/curl
 
 ### Example Postman Collection Structure
 
@@ -677,7 +677,7 @@ MongoDB Views API
 
 ---
 
-## 📝 Error Handling
+## Error Handling
 
 All endpoints return appropriate HTTP status codes:
 
@@ -694,14 +694,14 @@ Error response format:
 
 ---
 
-## 🚀 Next Steps
+## Next Steps
 
-1. ✅ Copy endpoints to app.py
-2. ✅ Test each endpoint
-3. ⏳ Add authentication
-4. ⏳ Create frontend integration
-5. ⏳ Add to API documentation
+1. [✓] Copy endpoints to app.py
+2. [✓] Test each endpoint
+3. [Pending] Add authentication
+4. [Pending] Create frontend integration
+5. [Pending] Add to API documentation
 
 ---
 
-**Ready to use! All endpoints are production-ready with filtering, sorting, and comprehensive error handling.** 🎉
+**Ready to use! All endpoints are production-ready with filtering, sorting, and comprehensive error handling.**

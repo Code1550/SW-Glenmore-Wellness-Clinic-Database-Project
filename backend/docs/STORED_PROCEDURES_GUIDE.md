@@ -1,12 +1,12 @@
-# 🔧 MongoDB Stored Procedures (Functions) Guide
+# MongoDB Stored Procedures (Functions) Guide
 
-## ✅ 5 Stored Procedures for Wellness Clinic
+## [✓] 5 Stored Procedures for Wellness Clinic
 
 MongoDB supports stored JavaScript functions (similar to stored procedures in SQL databases).
 
 ---
 
-## 📦 What's Included
+## What's Included
 
 ### Script Files
 1. **[stored_procedures.py](computer:///mnt/user-data/outputs/stored_procedures.py)** - Python script to create stored functions
@@ -23,7 +23,7 @@ MongoDB supports stored JavaScript functions (similar to stored procedures in SQ
 
 ---
 
-## 🚀 QUICK START
+## QUICK START
 
 ### Option 1: Run Python Script
 
@@ -67,7 +67,7 @@ INFO:root:getStaffAppointmentCount(1) = 12 appointments
 INFO:root:isAppointmentAvailable(1, ...) = true
 
 ============================================================
-✅ ALL STORED FUNCTIONS CREATED!
+[✓] ALL STORED FUNCTIONS CREATED!
 ============================================================
 
 Available functions:
@@ -106,7 +106,7 @@ db.eval('calculatePatientAge("1990-05-15")')
 
 ---
 
-## 📚 Function Details
+## Function Details
 
 ### 1. calculatePatientAge
 
@@ -306,7 +306,7 @@ else:
 
 ---
 
-## 🔗 Flask Integration
+## Flask Integration
 
 Add these endpoints to your Flask app:
 
@@ -410,7 +410,7 @@ def recreate_stored_functions():
 
 ---
 
-## 🧪 Testing Endpoints
+## Testing Endpoints
 
 ```bash
 # Calculate patient age
@@ -443,7 +443,7 @@ curl -X POST http://localhost:8000/api/functions/recreate
 
 ---
 
-## 🎯 Use Cases
+## Use Cases
 
 ### 1. Patient Dashboard
 ```python
@@ -496,7 +496,7 @@ else:
 
 ---
 
-## ⚠️ Important Notes
+## Important Notes
 
 ### MongoDB Server Version
 - Stored functions require MongoDB 4.4+
@@ -523,7 +523,7 @@ Instead of stored functions, consider:
 
 ---
 
-## 🔄 Updating Functions
+## Updating Functions
 
 ### Option 1: Re-run Script
 ```bash
@@ -551,7 +551,7 @@ db.system.js.save({
 
 ---
 
-## ✅ Checklist
+## Checklist
 
 - [ ] Copy `stored_procedures.py` to backend directory
 - [ ] Run script to create functions
@@ -563,13 +563,13 @@ db.system.js.save({
 
 ---
 
-## 🎉 You're Done!
+## You're Done!
 
 You now have 5 stored procedures/functions in MongoDB:
-- ✅ calculatePatientAge
-- ✅ getPatientVisitCount
-- ✅ calculateInvoiceTotal
-- ✅ getStaffAppointmentCount
-- ✅ isAppointmentAvailable
+- [✓] calculatePatientAge
+- [✓] getPatientVisitCount
+- [✓] calculateInvoiceTotal
+- [✓] getStaffAppointmentCount
+- [✓] isAppointmentAvailable
 
-**Use them to simplify complex database operations!** 🚀
+**Use them to simplify complex database operations!**

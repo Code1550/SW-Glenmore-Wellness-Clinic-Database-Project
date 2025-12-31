@@ -1,4 +1,4 @@
-# ✅ Your .env File Configuration
+# Your .env File Configuration
 
 Use this **exact** configuration for your project:
 
@@ -26,7 +26,7 @@ MONGODB_DB_NAME=GlenmoreWellnessDB
    uvicorn main:app --reload
    ```
 
-## ✅ What You Should See
+## What You Should See
 
 ```
 Successfully connected to MongoDB database: GlenmoreWellnessDB
@@ -39,7 +39,7 @@ INFO:     Application startup complete.
 
 Then visit: **http://127.0.0.1:8000/docs** to see your API!
 
-## 🔍 Testing the Connection
+## Testing the Connection
 
 Once running, test these endpoints:
 
@@ -47,7 +47,7 @@ Once running, test these endpoints:
 2. **API Docs**: http://127.0.0.1:8000/docs
 3. **Get Patients**: http://127.0.0.1:8000/patients
 
-## 📝 Note
+## Note
 
 The code now supports **both**:
 - `MONGODB_URL` (standard naming)
@@ -55,7 +55,7 @@ The code now supports **both**:
 
 So your configuration will work perfectly!
 
-## ⚠️ Important Security Notes
+## Important Security Notes
 
 1. **Never commit .env to Git** - it's already in .gitignore
 2. Your database credentials are:
@@ -68,6 +68,6 @@ So your configuration will work perfectly!
    - Go to MongoDB Atlas → Network Access
    - Add your current IP or use 0.0.0.0/0 for development
 
-## 🚀 You're Ready!
+## You're Ready!
 
 Your backend is now properly configured to connect to your MongoDB Atlas cluster with all 23 collections ready to use!

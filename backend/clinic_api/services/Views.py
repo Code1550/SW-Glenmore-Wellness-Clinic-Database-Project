@@ -598,8 +598,8 @@ class ViewsManager:
                             "$concat": [
                                 {"$cond": {
                                     "if": "$is_walkin",
-                                    "then": "🚶 ",
-                                    "else": "📅 "
+                                    "then": "[W] ",
+                                    "else": "[C] "
                                 }},
                                 {"$ifNull": ["$patient.first_name", ""]},
                                 " ",
